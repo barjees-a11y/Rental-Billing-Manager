@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 
+   CYBER-GLASS DESIGN SYSTEM 
+   Deep atmosphere, vibrant accents, glassmorphism.
+*/
+
+@layer base {
+  :root {
+    /* LIGHT MODE (Clean Glass) - Kept readable but modern */
+    --background: 210 20% 98%;
+    --foreground: 220 40% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 40% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 40% 10%;
+
+    --primary: 190 100% 40%; /* Deep Cyan */
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 220 40% 10%;
+
+    --muted: 210 20% 96%;
+    --muted-foreground: 220 10% 46%;
+
+    --accent: 260 100% 60%; /* Electric Purple */
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 190 100% 40%;
+
+    --radius: 0.75rem;
+
+    /* Glass Vars */
+    --glass-background: 0 0% 100% / 0.7;
+    --glass-border: 0 0% 100% / 0.2;
+    --glass-blur: 12px;
+  }
+
+  .dark {
+    /* DARK MODE (Cyber Glass) - The Main Aesthetic */
+    --background: 222 47% 6%; /* Deep Void Blue Base */
+    --foreground: 210 40% 98%; /* Bright Text */
+
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 190 100% 50%; /* Neon Cyan */
+    --primary-foreground: 222 47% 6%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 260 100% 70%; /* Bright Purple */
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 20%;
+    --input: 217 33% 20%;
+    --ring: 190 100% 50%;
+
+    /* Glass Vars - Dark */
+    --glass-background: 222 47% 11% / 0.6;
+    --glass-border: 217 33% 30% / 0.3;
+    --glass-blur: 20px;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased font-body;
+    /* Deep atmospheric gradient for dark mode background */
+    background-image: linear-gradient(to bottom right, hsl(222 47% 6%), hsl(222 47% 10%));
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight;
+  }
+}
+
+@layer components {
+  /* Reusable Glass Panel */
+  .glass-panel {
+    @apply backdrop-blur-xl border border-[hsl(var(--glass-border))] shadow-2xl;
+    background: hsl(var(--glass-background));
+  }
+
+  /* Legacy utility mapped to new system */
+  .glass-card {
+    @apply glass-panel rounded-lg;
+  }
+
+  .glass-sidebar {
+    @apply backdrop-blur-2xl border-r border-[hsl(var(--glass-border))];
+    background: hsl(var(--glass-background));
+  }
+
+  /* Cyber Gradient Border */
+  .gradient-border {
+    position: relative;
+    background: linear-gradient(var(--background), var(--background)) padding-box,
+                linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent))) border-box;
+    border: 1px solid transparent;
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Scrollbar Styling */
+  .always-show-scrollbar {
+    overflow-x: scroll !important;
+  }
+  
+  .always-show-scrollbar::-webkit-scrollbar {
+    height: 8px;
+    display: block !important;
+  }
+  
+  .always-show-scrollbar::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+    border-radius: 4px;
+  }
+  
+  .always-show-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 4px;
+  }
+  
+  .always-show-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+}
