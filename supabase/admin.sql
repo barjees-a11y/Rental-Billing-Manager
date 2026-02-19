@@ -26,4 +26,4 @@ select * from pg_stat_activity where datname = current_database();
 
 -- 7. Grant Admin Access (Example RLS Bypass Policy)
 -- create policy "Admins can view all" on public.contracts
--- for select using (auth.email() = 'admin@rental.com');
+-- for select using (auth.email() = 'barjees@saharaedoc');

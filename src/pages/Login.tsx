@@ -11,8 +11,10 @@ import { FileText } from 'lucide-react';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, resetPassword } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -23,20 +25,38 @@ export default function Login() {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    const success = login(email, password);
-
-    if (success) {
-      toast({
-        title: 'Welcome back!',
-        description: 'You have successfully signed in.',
-      });
-      navigate('/');
+    if (isResetting) {
+      const success = resetPassword(email, newPassword);
+      if (success) {
+        toast({
+          title: 'Password Reset Successful',
+          description: 'You can now login with your new password.',
+        });
+        setIsResetting(false);
+        setPassword(''); // Clear password field
+      } else {
+        toast({
+          title: 'Reset Failed',
+          description: 'User not found. Please check existing users.',
+          variant: 'destructive',
+        });
+      }
     } else {
-      toast({
-        title: 'Login failed',
-        description: 'Invalid email or password. Try admin@rental.com / rental123',
-        variant: 'destructive',
-      });
+      const success = login(email, password);
+
+      if (success) {
+        toast({
+          title: 'Welcome back!',
+          description: 'You have successfully signed in.',
+        });
+        navigate('/');
+      } else {
+        toast({
+          title: 'Login failed',
+          description: 'Invalid email or password. Try barjees@saharaedoc / rental123',
+          variant: 'destructive',
+        });
+      }
     }
 
     setIsLoading(false);
@@ -54,7 +74,7 @@ export default function Login() {
           </div>
           <CardTitle className="text-2xl gradient-text">Rental Billing Manager</CardTitle>
           <CardDescription>
-            Sign in to manage your rental contracts and invoices
+            {isResetting ? 'Reset your password to regain access' : 'Sign in to manage your rental contracts and invoices'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -64,26 +84,68 @@ export default function Login() {
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@rental.com"
+                placeholder="barjees@saharaedoc"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
+
+            {!isResetting ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsResetting(true);
+                      setPassword('');
+                      setNewPassword('');
+                    }}
+                    className="text-xs text-primary hover:underline font-medium"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">New Password</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  placeholder="New Password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+            )}
+
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Signing in...' : 'Sign In'}
+              {isLoading ? (isResetting ? 'Resetting...' : 'Signing in...') : (isResetting ? 'Reset Password' : 'Sign In')}
             </Button>
+
+            {isResetting && (
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setIsResetting(false)}
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Back to Login
+                </button>
+              </div>
+            )}
           </form>
 
 

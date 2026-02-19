@@ -15,13 +15,14 @@ export function useAuth() {
     user: null,
     isAuthenticated: false,
   });
-  
+
   const [users, setUsers] = useLocalStorage<User[]>(USERS_KEY, [
     // Default admin user
     {
       id: 'admin-1',
-      email: 'admin@rental.com',
+      email: 'barjees@saharaedoc',
       name: 'Admin User',
+      password: 'rental123', // Default password
       createdAt: new Date().toISOString(),
     }
   ]);
@@ -29,8 +30,11 @@ export function useAuth() {
   const login = useCallback((email: string, password: string): boolean => {
     // Simple auth - in production this would validate against backend
     const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    
-    if (user && password === 'rental123') { // Simple password for demo
+
+    // Check against stored password or default if not set (for backward compatibility)
+    const storedPassword = user?.password || 'rental123';
+
+    if (user && password === storedPassword) {
       setAuthState({
         user,
         isAuthenticated: true,
@@ -51,22 +55,40 @@ export function useAuth() {
     if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
       return false; // User already exists
     }
-    
+
     const newUser: User = {
       id: crypto.randomUUID(),
       email,
       name,
+      password, // Store with password
       createdAt: new Date().toISOString(),
     };
-    
+
     setUsers(prev => [...prev, newUser]);
     setAuthState({
       user: newUser,
       isAuthenticated: true,
     });
-    
+
     return true;
   }, [users, setUsers, setAuthState]);
+
+  const resetPassword = useCallback((email: string, newPassword: string): boolean => {
+    const userIndex = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
+
+    if (userIndex === -1) {
+      return false; // User not found
+    }
+
+    const updatedUsers = [...users];
+    updatedUsers[userIndex] = {
+      ...updatedUsers[userIndex],
+      password: newPassword
+    };
+
+    setUsers(updatedUsers);
+    return true;
+  }, [users, setUsers]);
 
   return {
     user: authState.user,
@@ -74,5 +96,6 @@ export function useAuth() {
     login,
     logout,
     register,
+    resetPassword,
   };
 }
