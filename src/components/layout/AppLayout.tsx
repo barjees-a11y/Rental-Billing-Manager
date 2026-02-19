@@ -14,6 +14,7 @@ import {
   Eye,
   Menu,
   ChevronLeft,
+  Archive,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,6 +27,7 @@ interface AppLayoutProps {
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/contracts', label: 'Contracts', icon: FileText },
+  { path: '/archived', label: 'Archived', icon: Archive },
   { path: '/custom-view', label: 'Custom View', icon: Eye },
   { path: '/import', label: 'Import Excel', icon: Upload },
   { path: '/reports', label: 'Reports', icon: FileSpreadsheet },
@@ -168,7 +170,10 @@ export function AppLayout({ children }: AppLayoutProps) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
+      <main className={cn(
+        "flex-1 overflow-auto transition-all duration-300",
+        sidebarCollapsed ? "pt-16" : ""
+      )}>
         <div className="p-2 lg:p-3">
           {children}
         </div>

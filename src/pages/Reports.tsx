@@ -1,0 +1,258 @@
+import { useState, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useContracts } from '@/hooks/useContracts';
+import { 
+  Download, 
+  FileText,
+  TrendingUp,
+  Users,
+  Calendar,
+} from 'lucide-react';
+import { BILLING_PERIOD_LABELS } from '@/types/contracts';
+import { useToast } from '@/hooks/use-toast';
+import { getContractsDueThisMonth } from '@/lib/invoiceDateLogic';
+import { MONTH_NAMES } from '@/lib/billingPeriodColors';
+import { exportMonthlyContractsToExcel, getAvailableYears, getContractsDueInMonth } from '@/lib/monthlyExcelExport';
+
+export default function Reports() {
+  const { contracts, stats: contractStats } = useContracts();
+  const { toast } = useToast();
+  
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<number>(currentDate.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState<number>(currentDate.getFullYear());
+
+  const availableYears = useMemo(() => getAvailableYears(), []);
+  const contractsDueInSelectedMonth = useMemo(
+    () => getContractsDueInMonth(contracts, selectedMonth, selectedYear),
+    [contracts, selectedMonth, selectedYear],
+  );
+
+  const handleExportMonthly = () => {
+    const { count, filename } = exportMonthlyContractsToExcel(contracts, selectedMonth, selectedYear);
+    if (count === 0) {
+      toast({ 
+        title: 'No contracts', 
+        description: `No contracts are due in ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`,
+        variant: 'destructive'
+      });
+    } else {
+      toast({ title: 'Export complete', description: `${count} contracts exported to ${filename}` });
+    }
+  };
+
+  // Group contracts by customer
+  const customerStats = contracts.reduce((acc, c) => {
+    if (!acc[c.customer]) {
+      acc[c.customer] = { count: 0 };
+    }
+    acc[c.customer].count++;
+    return acc;
+  }, {} as Record<string, { count: number }>);
+
+  const topCustomers = Object.entries(customerStats)
+    .map(([customer, data]) => ({ customer, ...data }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+
+  // Contracts due this month
+  const dueThisMonth = getContractsDueThisMonth(contracts);
+  const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold gradient-text">Reports & Export</h1>
+        <p className="text-muted-foreground mt-1">
+          Generate reports and export your data
+        </p>
+      </div>
+
+      {/* Export by Month */}
+      <Card className="glass-card hover:border-primary/30 transition-colors">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <FileText className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Monthly Contracts Export</CardTitle>
+              <CardDescription>Export contracts due in a specific month</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Month:</span>
+              <Select 
+                value={String(selectedMonth)} 
+                onValueChange={(v) => setSelectedMonth(parseInt(v))}
+              >
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MONTH_NAMES.map((name, idx) => (
+                    <SelectItem key={idx} value={String(idx + 1)}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Year:</span>
+              <Select 
+                value={String(selectedYear)} 
+                onValueChange={(v) => setSelectedYear(parseInt(v))}
+              >
+                <SelectTrigger className="w-[90px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableYears.map((year) => (
+                    <SelectItem key={year} value={String(year)}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="text-sm text-muted-foreground">
+              {contractsDueInSelectedMonth.length} contracts due
+            </div>
+
+            <Button onClick={handleExportMonthly}>
+              <Download className="h-4 w-4 mr-2" />
+              Export {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Invoice Schedule */}
+      <Card className="glass-card">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" />
+            Invoice Schedule - {currentMonth}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="p-4 rounded-lg bg-muted/30 text-center">
+              <div className="text-2xl font-bold text-primary">{dueThisMonth.day5.length}</div>
+              <div className="text-sm text-muted-foreground">5th of Month</div>
+            </div>
+            <div className="p-4 rounded-lg bg-muted/30 text-center">
+              <div className="text-2xl font-bold text-primary">{dueThisMonth.day15.length}</div>
+              <div className="text-sm text-muted-foreground">15th of Month</div>
+            </div>
+            <div className="p-4 rounded-lg bg-muted/30 text-center">
+              <div className="text-2xl font-bold text-primary">{dueThisMonth.day25.length}</div>
+              <div className="text-sm text-muted-foreground">25th of Month</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Summary Stats */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Billing Period Breakdown */}
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              Contracts by Billing Period
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {Object.entries(contractStats.byPeriod).map(([period, count]) => (
+                <div key={period} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{period}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {BILLING_PERIOD_LABELS[period as keyof typeof BILLING_PERIOD_LABELS]}
+                    </span>
+                  </div>
+                  <span className="font-bold">{count}</span>
+                </div>
+              ))}
+              {Object.keys(contractStats.byPeriod).length === 0 && (
+                <p className="text-muted-foreground text-center py-4">No contracts yet</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Top Customers */}
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              Top Customers by Contracts
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {topCustomers.map((customer, index) => (
+                <div key={customer.customer} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
+                      {index + 1}
+                    </span>
+                    <span className="truncate max-w-[200px]">{customer.customer}</span>
+                  </div>
+                  <span className="font-bold">{customer.count} contracts</span>
+                </div>
+              ))}
+              {topCustomers.length === 0 && (
+                <p className="text-muted-foreground text-center py-4">No customers yet</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Contract Summary */}
+      <Card className="glass-card">
+        <CardHeader>
+          <CardTitle className="text-lg">Contract Summary</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="p-4 rounded-lg bg-muted/30">
+              <p className="text-sm text-muted-foreground">Total Contracts</p>
+              <p className="text-2xl font-bold">{contractStats.total}</p>
+            </div>
+            <div className="p-4 rounded-lg bg-success/10">
+              <p className="text-sm text-muted-foreground">Active</p>
+              <p className="text-2xl font-bold text-success">{contractStats.active}</p>
+            </div>
+            <div className="p-4 rounded-lg bg-warning/10">
+              <p className="text-sm text-muted-foreground">Due This Month</p>
+              <p className="text-2xl font-bold text-warning">{dueThisMonth.all.length}</p>
+            </div>
+            <div className="p-4 rounded-lg bg-primary/10">
+              <p className="text-sm text-muted-foreground">Unique Customers</p>
+              <p className="text-2xl font-bold text-primary">{Object.keys(customerStats).length}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

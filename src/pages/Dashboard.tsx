@@ -10,10 +10,14 @@ import {
   CheckCircle2,
   Calendar,
   Users,
+  Download,
 } from 'lucide-react';
+import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { BILLING_PERIOD_LABELS } from '@/types/contracts';
 import { getContractsDueThisMonth } from '@/lib/invoiceDateLogic';
+import { exportAllContractsToExcel } from '@/lib/fullExcelExport';
+import { useToast } from '@/hooks/use-toast';
 import {
   BarChart,
   Bar,
@@ -31,6 +35,23 @@ const COLORS = ['hsl(217, 91%, 60%)', 'hsl(142, 76%, 42%)', 'hsl(38, 92%, 50%)',
 
 export default function Dashboard() {
   const { contracts, stats: contractStats } = useContracts();
+  const { toast } = useToast();
+
+  const handleDownloadAll = () => {
+    if (contracts.length === 0) {
+      toast({
+        title: 'No contracts',
+        description: 'No contracts available to download.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const { count } = exportAllContractsToExcel(contracts);
+    toast({
+      title: 'Download Complete',
+      description: `Downloaded all ${count} contracts (sorted by joining date).`,
+    });
+  };
 
   // Prepare chart data
   const periodData = Object.entries(contractStats.byPeriod).map(([period, count]) => ({
@@ -52,7 +73,7 @@ export default function Dashboard() {
 
   const recentContracts = contracts
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, 5);
+    .slice(0, 10);
 
   // Get unique customers count
   const uniqueCustomers = new Set(contracts.map(c => c.customer)).size;
@@ -68,6 +89,10 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex gap-3">
+          <Button variant="outline" onClick={handleDownloadAll}>
+            <Download className="h-4 w-4 mr-2" />
+            Download All
+          </Button>
           <Button asChild variant="outline">
             <Link to="/import">
               <Upload className="h-4 w-4 mr-2" />
@@ -143,16 +168,16 @@ export default function Dashboard() {
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-destructive to-destructive/50" />
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Pending Contracts
+              Suspended Contracts
             </CardTitle>
             <div className="p-2 rounded-lg bg-muted group-hover:bg-muted/80 transition-colors">
               <TrendingUp className="h-4 w-4 text-destructive shadow-[0_0_10px_hsl(var(--destructive)/0.5)]" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold gradient-text">{contractStats.byStatus?.pending || 0}</div>
+            <div className="text-2xl font-bold gradient-text">{contractStats.byStatus?.pulled_out || 0}</div>
             <p className="text-xs text-muted-foreground">
-              awaiting activation
+              terminated contracts
             </p>
           </CardContent>
         </Card>
@@ -293,15 +318,15 @@ export default function Dashboard() {
       {/* Recent Activity */}
       <Card className="glass-panel animate-slide-up [animation-delay:800ms] opacity-0">
         <CardHeader>
-          <CardTitle className="text-lg">Recent Contracts</CardTitle>
+          <CardTitle className="text-lg">Recent Updates</CardTitle>
         </CardHeader>
         <CardContent>
           {recentContracts.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
               {recentContracts.map((contract) => (
                 <div
                   key={contract.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-lg ${contract.status === 'active' ? 'bg-success/10' : 'bg-muted'
@@ -323,8 +348,8 @@ export default function Dashboard() {
                     <Badge variant={contract.status === 'active' ? 'default' : 'secondary'}>
                       {contract.billingPeriod}
                     </Badge>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {contract.invoiceDay}th of month
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {format(new Date(contract.updatedAt), 'dd/MM/yyyy')}
                     </p>
                   </div>
                 </div>
@@ -344,6 +369,6 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </div >
   );
 }

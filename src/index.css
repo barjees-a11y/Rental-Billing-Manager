@@ -19,7 +19,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 40% 10%;
 
-    --primary: 190 100% 40%; /* Deep Cyan */
+    --primary: 190 100% 40%;
+    /* Deep Cyan */
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 20% 96%;
@@ -28,7 +29,8 @@
     --muted: 210 20% 96%;
     --muted-foreground: 220 10% 46%;
 
-    --accent: 260 100% 60%; /* Electric Purple */
+    --accent: 260 100% 60%;
+    /* Electric Purple */
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 84% 60%;
@@ -48,8 +50,10 @@
 
   .dark {
     /* DARK MODE (Cyber Glass) - The Main Aesthetic */
-    --background: 222 47% 6%; /* Deep Void Blue Base */
-    --foreground: 210 40% 98%; /* Bright Text */
+    --background: 222 47% 6%;
+    /* Deep Void Blue Base */
+    --foreground: 210 40% 98%;
+    /* Bright Text */
 
     --card: 222 47% 11%;
     --card-foreground: 210 40% 98%;
@@ -57,7 +61,8 @@
     --popover: 222 47% 11%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 190 100% 50%; /* Neon Cyan */
+    --primary: 190 100% 50%;
+    /* Neon Cyan */
     --primary-foreground: 222 47% 6%;
 
     --secondary: 217 33% 17%;
@@ -66,7 +71,8 @@
     --muted: 217 33% 17%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 260 100% 70%; /* Bright Purple */
+    --accent: 260 100% 70%;
+    /* Bright Purple */
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62% 50%;
@@ -95,13 +101,19 @@
     background-attachment: fixed;
     min-height: 100vh;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-display tracking-tight;
   }
 }
 
 @layer components {
+
   /* Reusable Glass Panel */
   .glass-panel {
     @apply backdrop-blur-xl border border-[hsl(var(--glass-border))] shadow-2xl;
@@ -122,7 +134,7 @@
   .gradient-border {
     position: relative;
     background: linear-gradient(var(--background), var(--background)) padding-box,
-                linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent))) border-box;
+      linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent))) border-box;
     border: 1px solid transparent;
   }
 
@@ -137,23 +149,29 @@
   .always-show-scrollbar {
     overflow-x: scroll !important;
   }
-  
+
   .always-show-scrollbar::-webkit-scrollbar {
     height: 8px;
     display: block !important;
   }
-  
+
   .always-show-scrollbar::-webkit-scrollbar-track {
     background: hsl(var(--muted));
     border-radius: 4px;
   }
-  
+
   .always-show-scrollbar::-webkit-scrollbar-thumb {
     background: hsl(var(--border));
     border-radius: 4px;
   }
-  
+
   .always-show-scrollbar::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted-foreground));
+  }
+}
+
+@layer utilities {
+  .will-change-transform-opacity {
+    will-change: transform, opacity;
   }
 }
