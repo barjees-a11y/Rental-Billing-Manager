@@ -30,15 +30,20 @@ import { PeriodSettingsCard } from '@/components/settings/PeriodSettingsCard';
 
 export default function Settings() {
   const { user } = useAuth();
-  const { contracts } = useContracts();
+  const { contracts, clearAllContracts } = useContracts();
   const { toast } = useToast();
 
   const [companyName, setCompanyName] = useState('Rental Billing Co.');
   const [emailNotifications, setEmailNotifications] = useState(true);
+  const [isClearing, setIsClearing] = useState(false);
 
-  const handleClearAllData = () => {
-    localStorage.removeItem('rental_billing_contracts');
-    window.location.reload();
+  const handleClearAllData = async () => {
+    setIsClearing(true);
+    const success = await clearAllContracts();
+    setIsClearing(false);
+    if (success) {
+      window.location.reload();
+    }
   };
 
   const handleSaveSettings = () => {
@@ -176,9 +181,9 @@ export default function Settings() {
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleClearAllData} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        Yes, delete everything
+                      <AlertDialogCancel disabled={isClearing}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction disabled={isClearing} onClick={handleClearAllData} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        {isClearing ? 'Clearing...' : 'Yes, delete everything'}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>

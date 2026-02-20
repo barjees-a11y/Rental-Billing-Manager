@@ -244,6 +244,24 @@ export function useContracts() {
     return contractsToUpsert.length;
   }, [fetchContracts, toast, user]);
 
+  const clearAllContracts = useCallback(async () => {
+    const userId = getDbUserId();
+    const { error } = await supabase
+      .from('contracts')
+      .delete()
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Clear all error:', error);
+      toast({ title: 'Clear failed', description: error.message, variant: 'destructive' });
+      return false;
+    }
+
+    setContracts([]);
+    toast({ title: 'All contracts cleared' });
+    return true;
+  }, [toast, user]);
+
   // Statistics
   const stats = useMemo(() => {
     const active = contracts.filter(c => c.status === 'active').length;
@@ -287,6 +305,7 @@ export function useContracts() {
     terminateContract,
     getContract,
     importContracts,
+    clearAllContracts,
     stats,
   };
 }
