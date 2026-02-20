@@ -19,7 +19,7 @@ export function useAuth() {
   const [users, setUsers] = useLocalStorage<User[]>(USERS_KEY, [
     // Default admin user
     {
-      id: 'admin-1',
+      id: '4ffbfe41-03a3-4983-9bdc-e72ab761df38',
       email: 'barjees@saharaedoc',
       name: 'Admin User',
       password: 'rental123', // Default password
@@ -36,7 +36,7 @@ export function useAuth() {
       if (!adminUser) {
         // Re-create admin if missing
         adminUser = {
-          id: 'admin-1',
+          id: '4ffbfe41-03a3-4983-9bdc-e72ab761df38',
           email: 'barjees@saharaedoc.com',
           name: 'Admin User',
           password: 'rental123',
@@ -104,7 +104,7 @@ export function useAuth() {
       // Special handling for default admin if missing
       if (email.toLowerCase() === 'barjees@saharaedoc.com') {
         const newAdmin: User = {
-          id: 'admin-1',
+          id: '4ffbfe41-03a3-4983-9bdc-e72ab761df38',
           email: 'barjees@saharaedoc.com',
           name: 'Admin User',
           password: newPassword,

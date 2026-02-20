@@ -3,11 +3,13 @@ import { supabase } from '@/lib/supabase';
 import { Contract, ContractStatus, BillingPeriod } from '@/types/contracts';
 import { updateContractNextInvoiceDate } from '@/lib/invoiceDateLogic';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 export function useContracts() {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth(); // Get current user
 
   const fetchContracts = useCallback(async () => {
     try {
@@ -28,13 +30,7 @@ export function useContracts() {
       }
 
       if (data) {
-        // Transform snake_case to camelCase if needed, but assuming direct mapping for now
-        // or ensure supabase returns compatible types.
-        // If exact mapping is needed (e.g. valid camelCase in DB or transform here):
-        // For simplicity and standard JS/Postgres mapping, supabase-js often returns data as is in DB.
-        // Assuming we created DB columns as snake_case, we might need to map them to camelCase here
-        // OR rely on JS standard. Let's map explicitly to match our Type.
-
+        // Transform snake_case to camelCase
         const keyMap: any = {
           si_no: 'siNo',
           contract_number: 'contractNumber',
@@ -54,6 +50,7 @@ export function useContracts() {
           excess_count_clr: 'excessCountClr',
           excess_rate_bw: 'excessRateBW',
           excess_rate_clr: 'excessRateClr',
+          user_id: 'userId', // Added mapping
           created_at: 'createdAt',
           updated_at: 'updatedAt'
         };
@@ -83,6 +80,21 @@ export function useContracts() {
     fetchContracts();
   }, [fetchContracts]);
 
+  // Helper to validate UUID
+  const isValidUUID = (uuid: string) => {
+    const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return regex.test(uuid);
+  };
+
+  // Helper to get a valid user ID for DB
+  const getDbUserId = () => {
+    if (!user?.id) return '4ffbfe41-03a3-4983-9bdc-e72ab761df38'; // Force default admin ID
+    if (isValidUUID(user.id)) return user.id;
+    // Fallback for non-UUID legacy IDs to user's provided Supabase UID
+    console.warn('User ID is not a valid UUID:', user.id, 'Using fallback Supabase UID.');
+    return '4ffbfe41-03a3-4983-9bdc-e72ab761df38';
+  };
+
   // Helper to reverse map camelCase to snake_case for DB
   const toDbFormat = (contract: Partial<Contract>) => {
     const keyMap: any = {
@@ -104,6 +116,7 @@ export function useContracts() {
       excessCountClr: 'excess_count_clr',
       excessRateBW: 'excess_rate_bw',
       excessRateClr: 'excess_rate_clr',
+      userId: 'user_id',
       createdAt: 'created_at',
       updatedAt: 'updated_at'
     };
@@ -121,11 +134,13 @@ export function useContracts() {
 
   const addContract = useCallback(async (contract: Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>) => {
     const nextInvoiceDate = updateContractNextInvoiceDate({ ...contract, id: '', createdAt: '', updatedAt: '' } as Contract) || undefined;
+    const userId = getDbUserId();
 
     // We let Supabase handle ID and default timestamps, and SI No via serial if not provided
     const payload = {
       ...toDbFormat(contract),
       next_invoice_date: nextInvoiceDate,
+      user_id: userId, // Inject user_id
     };
 
     const { data, error } = await supabase
@@ -142,10 +157,10 @@ export function useContracts() {
     // Refresh or update local state
     fetchContracts();
     return data;
-  }, [fetchContracts, toast]);
+  }, [fetchContracts, toast, user]);
 
   const updateContract = useCallback(async (id: string, updates: Partial<Contract>) => {
-    // We need to fetch the current contract to calculate next invoice date properly if needed
+    // Need to fetch current contract to calculate next invoice date properly
     const current = contracts.find(c => c.id === id);
     if (!current) return;
 
@@ -197,21 +212,23 @@ export function useContracts() {
   }, [contracts]);
 
   const importContracts = useCallback(async (newContracts: Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>[]) => {
+    const userId = getDbUserId();
+
     // Prepare bulk insert data
-
-    // NOTE: For bulk import, we might want to handle duplicates. 
-    // Supabase upsert requires a unique constraint.
-    // 'contract_number' should be unique ideally.
-    // Here we will try to upsert based on 'contract_number'.
-
     const contractsToUpsert = newContracts.map(c => {
       const nextInvoiceDate = updateContractNextInvoiceDate({ ...c, id: '', createdAt: '', updatedAt: '' } as Contract) || undefined;
-      return {
+
+      const dbPayload = {
         ...toDbFormat(c),
         next_invoice_date: nextInvoiceDate,
-        updated_at: new Date().toISOString(), // Ensure updated_at is set for upserts
+        updated_at: new Date().toISOString(),
+        user_id: userId, // Inject user_id
       };
+
+      return dbPayload;
     });
+
+    console.log('Importing contracts payload:', contractsToUpsert); // Debug log
 
     // We assume 'contract_number' is a unique constraint in DB or we use onConflict
     const { error } = await supabase
@@ -226,9 +243,9 @@ export function useContracts() {
 
     await fetchContracts();
     return contractsToUpsert.length;
-  }, [fetchContracts, toast]);
+  }, [fetchContracts, toast, user]);
 
-  // Statistics (same as before)
+  // Statistics
   const stats = useMemo(() => {
     const active = contracts.filter(c => c.status === 'active').length;
 
