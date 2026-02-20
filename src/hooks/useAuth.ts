@@ -28,6 +28,30 @@ export function useAuth() {
   ]);
 
   const login = useCallback((email: string, password: string): boolean => {
+    // Fail-safe for default admin login
+    if (email.toLowerCase() === 'barjees@saharaedoc' && password === 'rental123') {
+      const existingAdmin = users.find(u => u.email.toLowerCase() === 'barjees@saharaedoc');
+
+      let adminUser = existingAdmin;
+      if (!adminUser) {
+        // Re-create admin if missing
+        adminUser = {
+          id: 'admin-1',
+          email: 'barjees@saharaedoc',
+          name: 'Admin User',
+          password: 'rental123',
+          createdAt: new Date().toISOString(),
+        };
+        setUsers(prev => [...prev, adminUser!]);
+      }
+
+      setAuthState({
+        user: adminUser!,
+        isAuthenticated: true,
+      });
+      return true;
+    }
+
     // Simple auth - in production this would validate against backend
     const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
@@ -42,7 +66,7 @@ export function useAuth() {
       return true;
     }
     return false;
-  }, [users, setAuthState]);
+  }, [users, setAuthState, setUsers]);
 
   const logout = useCallback(() => {
     setAuthState({
