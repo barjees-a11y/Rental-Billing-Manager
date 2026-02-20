@@ -50,6 +50,10 @@ export function useContracts() {
           termination_reason: 'terminationReason',
           next_invoice_date: 'nextInvoiceDate',
           last_invoice_date: 'lastInvoiceDate',
+          excess_count_bw: 'excessCountBW',
+          excess_count_clr: 'excessCountClr',
+          excess_rate_bw: 'excessRateBW',
+          excess_rate_clr: 'excessRateClr',
           created_at: 'createdAt',
           updated_at: 'updatedAt'
         };
@@ -96,6 +100,10 @@ export function useContracts() {
       terminationReason: 'termination_reason',
       nextInvoiceDate: 'next_invoice_date',
       lastInvoiceDate: 'last_invoice_date',
+      excessCountBW: 'excess_count_bw',
+      excessCountClr: 'excess_count_clr',
+      excessRateBW: 'excess_rate_bw',
+      excessRateClr: 'excess_rate_clr',
       createdAt: 'created_at',
       updatedAt: 'updated_at'
     };

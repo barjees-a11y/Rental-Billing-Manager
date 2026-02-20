@@ -40,6 +40,10 @@ export interface Contract {
   terminationReason?: string;
   nextInvoiceDate?: string;  // Auto-calculated
   lastInvoiceDate?: string;
+  excessCountBW?: number;
+  excessCountClr?: number;
+  excessRateBW?: number;
+  excessRateClr?: number;
   createdAt: string;
   updatedAt: string;
 }
