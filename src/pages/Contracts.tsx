@@ -242,8 +242,8 @@ export default function Contracts() {
           </TabsList>
 
           {/* Inline Filters */}
-          <div className="flex items-center gap-2 flex-1">
-            <div className="relative flex-1 max-w-[280px]">
+          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[200px]">
+            <div className="relative flex-1 w-full min-w-[150px] max-w-[280px]">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Search..."

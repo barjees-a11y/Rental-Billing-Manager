@@ -297,7 +297,7 @@ export default function ImportExcel() {
         status: 'active' as const,
       }));
 
-      const imported = importContracts(contractsToImport);
+      const imported = await importContracts(contractsToImport);
 
       toast({
         title: 'Import successful',

@@ -195,7 +195,7 @@ export default function Dashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="p-4 rounded-xl bg-muted/30 text-center border border-border/30 hover:border-primary/30 transition-colors">
               <div className="text-3xl font-bold gradient-text">{dueThisMonth.day5.length}</div>
               <div className="text-sm font-medium mt-1">Generate on 5th</div>

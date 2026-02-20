@@ -27,7 +27,7 @@ export function useAuth() {
     }
   ]);
 
-  const login = useCallback((email: string, password: string): boolean => {
+  const login = useCallback((email: string, password: string, remember: boolean = true): boolean => {
     // Fail-safe for default admin login
     if (email.toLowerCase() === 'barjees@saharaedoc' && password === 'rental123') {
       const existingAdmin = users.find(u => u.email.toLowerCase() === 'barjees@saharaedoc');
@@ -101,6 +101,18 @@ export function useAuth() {
     const userIndex = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
 
     if (userIndex === -1) {
+      // Special handling for default admin if missing
+      if (email.toLowerCase() === 'barjees@saharaedoc') {
+        const newAdmin: User = {
+          id: 'admin-1',
+          email: 'barjees@saharaedoc',
+          name: 'Admin User',
+          password: newPassword,
+          createdAt: new Date().toISOString(),
+        };
+        setUsers(prev => [...prev, newAdmin]);
+        return true;
+      }
       return false; // User not found
     }
 
