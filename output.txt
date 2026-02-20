@@ -1,0 +1,9 @@
+[dotenv@17.3.1] injecting env (3) from .env.local -- tip: ≡ƒöÉ prevent building .env in docker: https://dotenvx.com/prebuild
+ping: null {
+  code: 'PGRST202',
+  details: 'Searched for the function public.hello without parameters or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.',
+  hint: null,
+  message: 'Could not find the function public.hello without parameters in the schema cache'
+}
+Insert with string: null
+Insert with integer: null
