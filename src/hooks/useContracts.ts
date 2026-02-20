@@ -234,7 +234,6 @@ export function useContracts() {
     const { error } = await supabase
       .from('contracts')
       .upsert(contractsToUpsert, { onConflict: 'contract_number' });
-
     if (error) {
       console.error('Import error:', error);
       toast({ title: 'Import failed', description: error.message, variant: 'destructive' });

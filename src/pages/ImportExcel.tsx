@@ -299,14 +299,18 @@ export default function ImportExcel() {
 
       const imported = await importContracts(contractsToImport);
 
-      toast({
-        title: 'Import successful',
-        description: `${imported} contracts have been imported/updated.`,
-      });
+      if (imported > 0) {
+        toast({
+          title: 'Import successful',
+          description: `${imported} contracts have been imported/updated.`,
+        });
 
-      // Clear parsed data
-      setParsedData([]);
-      setFileName(null);
+        // Clear parsed data only on success
+        setParsedData([]);
+        setFileName(null);
+      } else {
+        // Warning toast is handled by useContracts
+      }
     } catch (error) {
       toast({
         title: 'Import failed',
