@@ -29,15 +29,15 @@ export function useAuth() {
 
   const login = useCallback((email: string, password: string, remember: boolean = true): boolean => {
     // Fail-safe for default admin login
-    if (email.toLowerCase() === 'barjees@saharaedoc' && password === 'rental123') {
-      const existingAdmin = users.find(u => u.email.toLowerCase() === 'barjees@saharaedoc');
+    if (email.toLowerCase() === 'barjees@saharaedoc.com' && password === 'rental123') {
+      const existingAdmin = users.find(u => u.email.toLowerCase() === 'barjees@saharaedoc.com');
 
       let adminUser = existingAdmin;
       if (!adminUser) {
         // Re-create admin if missing
         adminUser = {
           id: 'admin-1',
-          email: 'barjees@saharaedoc',
+          email: 'barjees@saharaedoc.com',
           name: 'Admin User',
           password: 'rental123',
           createdAt: new Date().toISOString(),
@@ -102,10 +102,10 @@ export function useAuth() {
 
     if (userIndex === -1) {
       // Special handling for default admin if missing
-      if (email.toLowerCase() === 'barjees@saharaedoc') {
+      if (email.toLowerCase() === 'barjees@saharaedoc.com') {
         const newAdmin: User = {
           id: 'admin-1',
-          email: 'barjees@saharaedoc',
+          email: 'barjees@saharaedoc.com',
           name: 'Admin User',
           password: newPassword,
           createdAt: new Date().toISOString(),

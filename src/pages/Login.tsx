@@ -57,7 +57,7 @@ export default function Login() {
       } else {
         toast({
           title: 'Login failed',
-          description: 'Invalid email or password. Try barjees@saharaedoc / rental123',
+          description: 'Invalid email or password. Try barjees@saharaedoc.com / rental123',
           variant: 'destructive',
         });
       }
