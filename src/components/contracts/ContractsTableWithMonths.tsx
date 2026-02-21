@@ -1,5 +1,5 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Contract, BillingPeriod, InvoiceDay, BILLING_PERIOD_LABELS, QuarterlyMonths } from '@/types/contracts';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { Contract, BillingPeriod, InvoiceDay, QuarterlyMonths } from '@/types/contracts';
 import {
   Table,
   TableBody,
@@ -11,7 +11,8 @@ import {
 import { ArrowUpDown, GripVertical } from 'lucide-react';
 import { EditableCell } from './EditableCell';
 import { EditableSelect } from './EditableSelect';
-import { BILLING_PERIOD_COLORS, getQuarterDisplayMonth, QuarterDefinition } from '@/lib/billingPeriodColors';
+import { getQuarterDisplayMonth, QuarterDefinition } from '@/lib/billingPeriodColors';
+import { useBillingPeriods } from '@/hooks/useBillingPeriods';
 import { cn } from '@/lib/utils';
 
 interface ContractsTableWithMonthsProps {
@@ -22,11 +23,6 @@ interface ContractsTableWithMonthsProps {
   sortField?: string;
   sortDirection?: 'asc' | 'desc';
 }
-
-const billingPeriodOptions = Object.entries(BILLING_PERIOD_LABELS).map(([value, label]) => ({
-  value: value as BillingPeriod,
-  label: value,
-}));
 
 const invoiceDayOptions: { value: string; label: string }[] = [
   { value: '5', label: '5th' },
@@ -212,24 +208,36 @@ export const ContractsTableWithMonths = React.memo(function ContractsTableWithMo
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(DEFAULT_COLUMN_WIDTHS);
   const [hasManualWidth, setHasManualWidth] = useState<Record<string, boolean>>({});
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const { allPeriods } = useBillingPeriods();
+
+  const billingPeriodOptions = useMemo(() => {
+    return allPeriods.map(p => ({
+      value: p.code as BillingPeriod,
+      label: p.label || p.code
+    }));
+  }, [allPeriods]);
 
   const handleResize = useCallback((field: string, width: number) => {
     setColumnWidths(prev => ({ ...prev, [field]: width }));
     setHasManualWidth(prev => ({ ...prev, [field]: true }));
   }, []);
 
-  const getCellStyle = (field: string) => {
+  const getCellStyle = (field: string, customColor?: string) => {
+    let styles: React.CSSProperties = {};
     if (hasManualWidth[field]) {
       const width = columnWidths[field];
-      return {
+      styles = {
         width: `${width}px`,
         minWidth: `${width}px`,
         maxWidth: `${width}px`,
-        wordWrap: 'break-word' as const,
-        whiteSpace: 'normal' as const,
+        wordWrap: 'break-word',
+        whiteSpace: 'normal',
       };
     }
-    return {};
+    if (customColor) {
+      styles.color = `#${customColor}`;
+    }
+    return styles;
   };
 
   return (
@@ -347,7 +355,10 @@ export const ContractsTableWithMonths = React.memo(function ContractsTableWithMo
           </TableHeader>
           <TableBody>
             {data.map((contract, rowIndex) => {
-              const periodColor = BILLING_PERIOD_COLORS[contract.billingPeriod];
+              const periodConfig = allPeriods.find(p => p.code === contract.billingPeriod);
+              const customExcelBg = periodConfig?.color?.excelBg;
+              const customExcelText = periodConfig?.color?.excelText;
+
               const scheduleOptions = getScheduleOptions(contract.billingPeriod);
               const isMB = contract.billingPeriod === 'MB';
 
@@ -356,26 +367,20 @@ export const ContractsTableWithMonths = React.memo(function ContractsTableWithMo
                   key={contract.id}
                   className="group cursor-pointer hover:ring-1 hover:ring-primary/30 hover:brightness-110 transition-all duration-150"
                   style={{
-                    backgroundColor: periodColor ? `hsl(${getPeriodHSL(contract.billingPeriod)})` : undefined
+                    backgroundColor: customExcelBg ? `#${customExcelBg}25` : undefined,
                   }}
                   onClick={() => onRowClick?.(contract)}
                 >
                   {/* SI No column */}
                   <TableCell
-                    className={cn(
-                      "font-medium border-r border-border/20 text-center",
-                      periodColor?.text
-                    )}
-                    style={getCellStyle('siNo')}
+                    className="font-medium border-r border-border/20 text-center"
+                    style={getCellStyle('siNo', customExcelText)}
                   >
                     {rowIndex + 1}
                   </TableCell>
                   <TableCell
-                    className={cn(
-                      "font-medium border-r border-border/20",
-                      periodColor?.text
-                    )}
-                    style={getCellStyle('contractNumber')}
+                    className="font-medium border-r border-border/20"
+                    style={getCellStyle('contractNumber', customExcelText)}
                   >
                     <EditableCell
                       value={contract.contractNumber}
@@ -383,8 +388,8 @@ export const ContractsTableWithMonths = React.memo(function ContractsTableWithMo
                     />
                   </TableCell>
                   <TableCell
-                    className={cn("border-r border-border/20", periodColor?.text)}
-                    style={getCellStyle('customer')}
+                    className="border-r border-border/20"
+                    style={getCellStyle('customer', customExcelText)}
                   >
                     <EditableCell
                       value={contract.customer}
@@ -392,8 +397,8 @@ export const ContractsTableWithMonths = React.memo(function ContractsTableWithMo
                     />
                   </TableCell>
                   <TableCell
-                    className={cn("border-r border-border/20", periodColor?.text)}
-                    style={getCellStyle('machineSite')}
+                    className="border-r border-border/20"
+                    style={getCellStyle('machineSite', customExcelText)}
                   >
                     <EditableCell
                       value={contract.machineSite}
@@ -402,7 +407,7 @@ export const ContractsTableWithMonths = React.memo(function ContractsTableWithMo
                   </TableCell>
                   <TableCell
                     className="border-r border-border/20"
-                    style={getCellStyle('billingPeriod')}
+                    style={getCellStyle('billingPeriod', customExcelText)}
                   >
                     <EditableSelect
                       value={contract.billingPeriod}
@@ -412,8 +417,8 @@ export const ContractsTableWithMonths = React.memo(function ContractsTableWithMo
                     />
                   </TableCell>
                   <TableCell
-                    className={cn("border-r border-border/20 text-center", periodColor?.text)}
-                    style={getCellStyle('invoiceDay')}
+                    className="border-r border-border/20 text-center"
+                    style={getCellStyle('invoiceDay', customExcelText)}
                   >
                     <EditableSelect
                       value={String(contract.invoiceDay)}
@@ -422,8 +427,8 @@ export const ContractsTableWithMonths = React.memo(function ContractsTableWithMo
                     />
                   </TableCell>
                   <TableCell
-                    className={cn("border-r border-border/20 text-center", periodColor?.text)}
-                    style={getCellStyle('billingSchedule')}
+                    className="border-r border-border/20 text-center"
+                    style={getCellStyle('billingSchedule', customExcelText)}
                   >
                     {isMB ? (
                       <span className="text-muted-foreground text-sm">All Months</span>
@@ -448,10 +453,9 @@ export const ContractsTableWithMonths = React.memo(function ContractsTableWithMo
                         key={quarter.label}
                         className={cn(
                           "text-center font-bold px-2",
-                          idx < 3 ? "border-r border-border/20" : "",
-                          periodColor?.text
+                          idx < 3 ? "border-r border-border/20" : ""
                         )}
-                        style={getCellStyle(`q${idx + 1}`)}
+                        style={getCellStyle(`q${idx + 1}`, customExcelText)}
                       >
                         {billingMonth}
                       </TableCell>
@@ -466,20 +470,3 @@ export const ContractsTableWithMonths = React.memo(function ContractsTableWithMo
     </div>
   );
 });
-
-/**
- * Get HSL color values for period-based row background
- */
-function getPeriodHSL(billingPeriod: BillingPeriod): string {
-  const hslMap: Record<BillingPeriod, string> = {
-    'MB': '217 91% 60% / 0.15',      // Blue
-    'QB': '142 71% 45% / 0.15',      // Green
-    'MBQX': '271 81% 56% / 0.15',    // Purple
-    'QBYX': '25 95% 53% / 0.15',     // Orange
-    'YB': '0 72% 51% / 0.15',        // Red
-    'HY': '168 80% 45% / 0.15',      // Teal
-    '2MBX': '330 81% 60% / 0.15',    // Pink
-    'MBYX': '45 93% 47% / 0.15',     // Amber
-  };
-  return hslMap[billingPeriod] || '0 0% 50% / 0.1';
-}

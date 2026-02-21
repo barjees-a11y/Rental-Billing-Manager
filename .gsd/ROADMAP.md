@@ -50,3 +50,11 @@
 - [x] Fix "5th Day" contracts missing by backdating start date to 1st of month
 - [x] Restore Excel "Day" column parsing (Override removed)
 - [x] Enforce timezone safety in date calculations
+
+### Phase 6: Settings and Excel Color Features
+**Status**: 🚧 In Progress
+**Objective**: Bring a full set of static and font color options in settings and apply them to real-time UI and Excel exports.
+**Key Deliverables**:
+- [ ] Implement infinite color picker for background and font in Settings.
+- [ ] Connect custom period colors directly to Excel generation (`excelExport.ts`).
+- [ ] Link `useBillingPeriods` configs to Dashboard Contracts Table for real-time reactivity without manual refresh.

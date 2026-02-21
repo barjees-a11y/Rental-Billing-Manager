@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useContracts } from '@/hooks/useContracts';
+import { useBillingPeriods } from '@/hooks/useBillingPeriods';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -49,6 +50,7 @@ type SortDirection = 'asc' | 'desc';
 
 export default function Contracts() {
   const { contracts, deleteContract, updateContract, stats: contractStats } = useContracts();
+  const { allPeriods } = useBillingPeriods();
   const { toast } = useToast();
 
   const [search, setSearch] = useState('');
@@ -204,7 +206,7 @@ export default function Contracts() {
             variant="default"
             className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 shadow-lg shadow-primary/20"
             onClick={() => {
-              const { count, filename } = exportMonthlyContractsToExcel(contracts, currentMonthNum, currentYear);
+              const { count, filename } = exportMonthlyContractsToExcel(contracts, currentMonthNum, currentYear, allPeriods);
               toast({ title: 'Export complete', description: `${count} contracts exported to ${filename}` });
             }}
           >

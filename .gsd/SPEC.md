@@ -12,6 +12,7 @@ Transform the Rental Billing Manager into a high-reliability, visually striking 
    - Deep, atmospheric backgrounds (no solid colors)
    - Staggered entry animations and micro-interactions
    - Cohesive, vibrant color themes (moving away from "system default" blues)
+3. **Real-time Dynamic Color Options**: Add comprehensive UI and Excel color customization, ensuring full background and font color control that syncs in real-time.
 
 ## Non-Goals (Out of Scope)
 - Backend logic changes (unless required for data fix)

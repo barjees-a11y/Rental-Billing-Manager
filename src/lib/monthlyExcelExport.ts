@@ -1,6 +1,6 @@
 import XLSX from 'xlsx-js-style';
-import { Contract } from '@/types/contracts';
-import { BILLING_PERIOD_COLORS, getQuarterDisplayMonth, QuarterDefinition, MONTH_NAMES } from '@/lib/billingPeriodColors';
+import { Contract, BillingPeriodConfig } from '@/types/contracts';
+import { getQuarterDisplayMonth, QuarterDefinition, MONTH_NAMES } from '@/lib/billingPeriodColors';
 import { isDueInMonth } from '@/lib/invoiceDateLogic';
 
 // Quarter definitions matching the dashboard
@@ -26,6 +26,7 @@ export function exportMonthlyContractsToExcel(
   contracts: Contract[],
   month: number,
   year: number,
+  allPeriods: BillingPeriodConfig[] = []
 ) {
   const dueContracts = getContractsDueInMonth(contracts, month, year);
   const monthName = MONTH_NAMES[month - 1];
@@ -55,7 +56,7 @@ export function exportMonthlyContractsToExcel(
   const wb = XLSX.utils.book_new();
 
   // Single billing sheet only
-  const mainSheet = createMonthlyBillingSheet(sortedContracts);
+  const mainSheet = createMonthlyBillingSheet(sortedContracts, allPeriods);
   XLSX.utils.book_append_sheet(wb, mainSheet, 'MANUAL BILLING');
 
   // Generate filename
@@ -69,7 +70,7 @@ export function exportMonthlyContractsToExcel(
  * Create monthly billing sheet with period colors - entire row colored
  * Includes invoice day separator rows (5th, 15th, 25th) for clear grouping
  */
-export function createMonthlyBillingSheet(contracts: Contract[]): XLSX.WorkSheet {
+export function createMonthlyBillingSheet(contracts: Contract[], allPeriods: BillingPeriodConfig[]): XLSX.WorkSheet {
   const headers = [
     'SI No', 'Contract#', 'Customer', 'Machine/Site', 'Period', 'Invoice Day', 'Billing Schedule',
     ...QUARTERS.map(q => q.label)
@@ -118,7 +119,7 @@ export function createMonthlyBillingSheet(contracts: Contract[]): XLSX.WorkSheet
     if (row.type === 'separator') {
       applySeparatorRowStyling(ws, rowIdx, totalCols, row.day!);
     } else if (row.contract) {
-      applyDataRowStyling(ws, rowIdx, totalCols, row.contract);
+      applyDataRowStyling(ws, rowIdx, totalCols, row.contract, allPeriods);
     }
     rowIdx++;
   }
@@ -194,8 +195,9 @@ function applySeparatorRowStyling(ws: XLSX.WorkSheet, row: number, totalCols: nu
 /**
  * Apply period-based coloring to a single data row
  */
-function applyDataRowStyling(ws: XLSX.WorkSheet, row: number, totalCols: number, contract: Contract): void {
-  const periodColors = BILLING_PERIOD_COLORS[contract.billingPeriod];
+function applyDataRowStyling(ws: XLSX.WorkSheet, row: number, totalCols: number, contract: Contract, allPeriods: BillingPeriodConfig[]): void {
+  const periodConfig = allPeriods.find(p => p.code === contract.billingPeriod);
+  const periodColors = periodConfig?.color;
   if (!periodColors) return;
 
   for (let col = 0; col < totalCols; col++) {
@@ -223,8 +225,6 @@ function applyDataRowStyling(ws: XLSX.WorkSheet, row: number, totalCols: number,
     };
   }
 }
-
-
 
 /**
  * Get list of years for dropdown (current year and 5 years back/forward)

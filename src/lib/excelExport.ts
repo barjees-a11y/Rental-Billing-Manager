@@ -1,6 +1,6 @@
 import XLSX from 'xlsx-js-style';
-import { Contract, BillingPeriod } from '@/types/contracts';
-import { BILLING_PERIOD_COLORS, getQuarterDisplayMonth, QuarterDefinition } from '@/lib/billingPeriodColors';
+import { Contract, BillingPeriodConfig } from '@/types/contracts';
+import { getQuarterDisplayMonth, QuarterDefinition } from '@/lib/billingPeriodColors';
 
 // Quarter definitions matching the dashboard (standardized 3-letter format)
 const QUARTERS = [
@@ -14,11 +14,11 @@ const QUARTERS = [
  * Export contracts to single-sheet Excel with period-based row coloring
  * Headers: Contract#, Customer, Machine/Site, Period, Invoice Day, Quarterly Months, Q1, Q2, Q3, Q4
  */
-export function exportContractsToExcel(contracts: Contract[]) {
+export function exportContractsToExcel(contracts: Contract[], allPeriods: BillingPeriodConfig[] = []) {
   const wb = XLSX.utils.book_new();
 
   // Create single billing sheet
-  const ws = createBillingSheet(contracts);
+  const ws = createBillingSheet(contracts, allPeriods);
   XLSX.utils.book_append_sheet(wb, ws, 'MANUAL BILLING');
 
   // Generate filename with date
@@ -32,7 +32,7 @@ export function exportContractsToExcel(contracts: Contract[]) {
  * Create billing sheet with quarterly columns and period-based row coloring
  * Columns: Contract#, Customer, Machine/Site, Period, Invoice Day, Quarterly Months, Q1, Q2, Q3, Q4
  */
-function createBillingSheet(contracts: Contract[]): XLSX.WorkSheet {
+function createBillingSheet(contracts: Contract[], allPeriods: BillingPeriodConfig[]): XLSX.WorkSheet {
   // Build header row with SI No as first column
   const headers = [
     'SI No', 'Contract#', 'Customer', 'Machine/Site', 'Period', 'Invoice Day', 'Billing Schedule',
@@ -51,24 +51,24 @@ function createBillingSheet(contracts: Contract[]): XLSX.WorkSheet {
       // MB period doesn't show billing schedule - it bills all months
       contract.billingPeriod === 'MB' ? '' : (contract.quarterlyMonths || ''),
     ];
-    
+
     // Add quarter billing months (only the specific month, not all)
     QUARTERS.forEach((quarter) => {
       row.push(getQuarterDisplayMonth(contract.billingPeriod, contract.quarterlyMonths, quarter));
     });
-    
+
     return row;
   });
 
   // Create worksheet
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-  
+
   // Apply header styling - dark blue with gold text
   applyHeaderStyling(ws);
-  
+
   // Apply period-based row coloring (entire row colored by period)
-  applyPeriodRowColoring(ws, contracts);
-  
+  applyPeriodRowColoring(ws, contracts, allPeriods);
+
   // Column widths (updated for SI No column)
   ws['!cols'] = [
     { wch: 6 },   // SI No
@@ -95,7 +95,7 @@ function createBillingSheet(contracts: Contract[]): XLSX.WorkSheet {
  */
 function applyHeaderStyling(ws: XLSX.WorkSheet): void {
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-  
+
   for (let C = range.s.c; C <= range.e.c; C++) {
     const headerCell = ws[XLSX.utils.encode_cell({ r: 0, c: C })];
     if (headerCell) {
@@ -122,39 +122,41 @@ function applyHeaderStyling(ws: XLSX.WorkSheet): void {
  * Each row gets the background color of its billing period across ALL columns
  * This ensures consistent visual grouping by billing period type
  */
-function applyPeriodRowColoring(ws: XLSX.WorkSheet, contracts: Contract[]): void {
+function applyPeriodRowColoring(ws: XLSX.WorkSheet, contracts: Contract[], allPeriods: BillingPeriodConfig[]): void {
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
   const totalCols = range.e.c + 1;
-  
+
   contracts.forEach((contract, rowIndex) => {
-    const periodColors = BILLING_PERIOD_COLORS[contract.billingPeriod];
+    const periodConfig = allPeriods.find(p => p.code === contract.billingPeriod);
+    const periodColors = periodConfig?.color;
+
     if (!periodColors) return;
-    
+
     const row = rowIndex + 1; // Skip header row (row 0)
-    
+
     // Apply styling to ALL cells in the row - create cell if it doesn't exist
     for (let col = 0; col < totalCols; col++) {
       const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-      
+
       // Create cell if it doesn't exist (for empty quarter columns)
       if (!ws[cellAddress]) {
         ws[cellAddress] = { t: 's', v: '' };
       }
-      
+
       const cell = ws[cellAddress];
-      
+
       // Apply full styling to every cell in the row
       cell.s = {
-        fill: { 
+        fill: {
           patternType: 'solid',
           fgColor: { rgb: periodColors.excelBg }
         },
-        font: { 
+        font: {
           bold: col === 4, // Bold the Period column (now at index 4 due to SI No)
           color: { rgb: periodColors.excelText },
           sz: 11
         },
-        alignment: { 
+        alignment: {
           horizontal: col <= 3 ? 'left' : 'center',  // SI No, Contract#, Customer, Machine/Site left-aligned
           vertical: 'center'
         },
@@ -170,6 +172,6 @@ function applyPeriodRowColoring(ws: XLSX.WorkSheet, contracts: Contract[]): void
 }
 
 // Legacy export for Reports page
-export function exportContractsReport(contracts: Contract[]) {
-  exportContractsToExcel(contracts);
+export function exportContractsReport(contracts: Contract[], allPeriods: BillingPeriodConfig[] = []) {
+  exportContractsToExcel(contracts, allPeriods);
 }

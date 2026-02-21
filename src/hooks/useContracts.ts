@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Contract, ContractStatus, BillingPeriod } from '@/types/contracts';
 import { updateContractNextInvoiceDate } from '@/lib/invoiceDateLogic';
@@ -6,79 +7,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
 export function useContracts() {
-  const [contracts, setContracts] = useState<Contract[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const { user } = useAuth(); // Get current user
-
-  const fetchContracts = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const { data, error } = await supabase
-        .from('contracts')
-        .select('*')
-        .order('si_no', { ascending: true }); // Order by SI No
-
-      if (error) {
-        console.error('Error fetching contracts:', error);
-        toast({
-          title: 'Error fetching data',
-          description: error.message,
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      if (data) {
-        // Transform snake_case to camelCase
-        const keyMap: any = {
-          si_no: 'siNo',
-          contract_number: 'contractNumber',
-          machine_site: 'machineSite',
-          billing_period: 'billingPeriod',
-          invoice_day: 'invoiceDay',
-          quarterly_months: 'quarterlyMonths',
-          rental_fee: 'rentalFee',
-          start_date: 'startDate',
-          end_date: 'endDate',
-          pullout_date: 'pulloutDate',
-          termination_date: 'terminationDate',
-          termination_reason: 'terminationReason',
-          next_invoice_date: 'nextInvoiceDate',
-          last_invoice_date: 'lastInvoiceDate',
-          excess_count_bw: 'excessCountBW',
-          excess_count_clr: 'excessCountClr',
-          excess_rate_bw: 'excessRateBW',
-          excess_rate_clr: 'excessRateClr',
-          user_id: 'userId', // Added mapping
-          created_at: 'createdAt',
-          updated_at: 'updatedAt'
-        };
-
-        const mappedContracts: Contract[] = data.map((item: any) => {
-          const newItem: any = { ...item };
-          Object.keys(keyMap).forEach(key => {
-            if (item[key] !== undefined) {
-              newItem[keyMap[key]] = item[key];
-              delete newItem[key];
-            }
-          });
-          return newItem as Contract;
-        });
-
-        setContracts(mappedContracts);
-      }
-    } catch (err) {
-      console.error('Unexpected error:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
-
-  // Initial fetch
-  useEffect(() => {
-    fetchContracts();
-  }, [fetchContracts]);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   // Helper to validate UUID
   const isValidUUID = (uuid: string) => {
@@ -88,11 +19,48 @@ export function useContracts() {
 
   // Helper to get a valid user ID for DB
   const getDbUserId = () => {
-    if (!user?.id) return '4ffbfe41-03a3-4983-9bdc-e72ab761df38'; // Force default admin ID
+    if (!user?.id) return '4ffbfe41-03a3-4983-9bdc-e72ab761df38';
     if (isValidUUID(user.id)) return user.id;
-    // Fallback for non-UUID legacy IDs to user's provided Supabase UID
     console.warn('User ID is not a valid UUID:', user.id, 'Using fallback Supabase UID.');
     return '4ffbfe41-03a3-4983-9bdc-e72ab761df38';
+  };
+
+  const userId = getDbUserId();
+
+  // Helper to map DB snake_case to Frontend camelCase
+  const fromDbFormat = (item: any): Contract => {
+    const keyMap: any = {
+      si_no: 'siNo',
+      contract_number: 'contractNumber',
+      machine_site: 'machineSite',
+      billing_period: 'billingPeriod',
+      invoice_day: 'invoiceDay',
+      quarterly_months: 'quarterlyMonths',
+      rental_fee: 'rentalFee',
+      start_date: 'startDate',
+      end_date: 'endDate',
+      pullout_date: 'pulloutDate',
+      termination_date: 'terminationDate',
+      termination_reason: 'terminationReason',
+      next_invoice_date: 'nextInvoiceDate',
+      last_invoice_date: 'lastInvoiceDate',
+      excess_count_bw: 'excessCountBW',
+      excess_count_clr: 'excessCountClr',
+      excess_rate_bw: 'excessRateBW',
+      excess_rate_clr: 'excessRateClr',
+      user_id: 'userId',
+      created_at: 'createdAt',
+      updated_at: 'updatedAt'
+    };
+
+    const newItem: any = { ...item };
+    Object.keys(keyMap).forEach(key => {
+      if (item[key] !== undefined) {
+        newItem[keyMap[key]] = item[key];
+        delete newItem[key];
+      }
+    });
+    return newItem as Contract;
   };
 
   // Helper to reverse map camelCase to snake_case for DB
@@ -132,135 +100,206 @@ export function useContracts() {
     return dbItem;
   };
 
-  const addContract = useCallback(async (contract: Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const nextInvoiceDate = updateContractNextInvoiceDate({ ...contract, id: '', createdAt: '', updatedAt: '' } as Contract) || undefined;
-    const userId = getDbUserId();
+  // 1. Query to fetch contracts
+  const { data: contracts = [], isLoading: isFetching } = useQuery({
+    queryKey: ['contracts', userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('contracts')
+        .select('*')
+        .eq('user_id', userId)
+        .order('si_no', { ascending: true });
 
-    // We let Supabase handle ID and default timestamps, and SI No via serial if not provided
-    const payload = {
-      ...toDbFormat(contract),
-      next_invoice_date: nextInvoiceDate,
-      user_id: userId, // Inject user_id
+      if (error) {
+        console.error('Error fetching contracts:', error);
+        toast({ title: 'Error fetching data', description: error.message, variant: 'destructive' });
+        return [];
+      }
+
+      return data ? data.map(fromDbFormat) : [];
+    },
+    enabled: !!userId,
+  });
+
+  // 2. Setup Realtime subscription for contracts
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase
+      .channel('contracts_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'contracts', filter: `user_id=eq.${userId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['contracts', userId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
     };
+  }, [userId, queryClient]);
 
-    const { data, error } = await supabase
-      .from('contracts')
-      .insert([payload])
-      .select()
-      .single();
+  // Mutations
+  const addMutation = useMutation({
+    mutationFn: async (contract: Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>) => {
+      const nextInvoiceDate = updateContractNextInvoiceDate({ ...contract, id: '', createdAt: '', updatedAt: '' } as Contract) || undefined;
+      const payload = {
+        ...toDbFormat(contract),
+        next_invoice_date: nextInvoiceDate,
+        user_id: userId,
+      };
 
-    if (error) {
+      const { data, error } = await supabase.from('contracts').insert([payload]).select().single();
+      if (error) throw error;
+      return fromDbFormat(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contracts', userId] });
+    },
+    onError: (error) => {
       toast({ title: 'Failed to add contract', description: error.message, variant: 'destructive' });
-      throw error;
     }
+  });
 
-    // Refresh or update local state
-    fetchContracts();
-    return data;
-  }, [fetchContracts, toast, user]);
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string, updates: Partial<Contract> }) => {
+      const current = contracts.find(c => c.id === id);
+      if (!current) throw new Error("Contract not found locally");
+
+      const updatedContract = { ...current, ...updates };
+      let finalNextInvoiceDate = current.nextInvoiceDate;
+
+      if (updates.billingPeriod || updates.invoiceDay || updates.quarterlyMonths || updates.startDate) {
+        finalNextInvoiceDate = updateContractNextInvoiceDate(updatedContract) || undefined;
+      }
+
+      const payload = {
+        ...toDbFormat(updates),
+        next_invoice_date: finalNextInvoiceDate,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase.from('contracts').update(payload).eq('id', id);
+      if (error) throw error;
+
+      return { id, updates, finalNextInvoiceDate };
+    },
+    onMutate: async ({ id, updates }) => {
+      await queryClient.cancelQueries({ queryKey: ['contracts', userId] });
+      const previous = queryClient.getQueryData<Contract[]>(['contracts', userId]);
+
+      if (previous) {
+        queryClient.setQueryData<Contract[]>(['contracts', userId], old =>
+          (old || []).map(c => c.id === id ? { ...c, ...updates } : c)
+        );
+      }
+      return { previous };
+    },
+    onSuccess: () => {
+      toast({ title: 'Contract updated' });
+    },
+    onError: (error, variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['contracts', userId], context.previous);
+      }
+      toast({ title: 'Update failed', description: error.message, variant: 'destructive' });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['contracts', userId] });
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('contracts').delete().eq('id', id);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      toast({ title: 'Contract deleted' });
+      queryClient.invalidateQueries({ queryKey: ['contracts', userId] });
+    },
+    onError: (error) => {
+      toast({ title: 'Delete failed', description: error.message, variant: 'destructive' });
+    }
+  });
+
+  const importMutation = useMutation({
+    mutationFn: async (newContracts: Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>[]) => {
+      const contractsToUpsert = newContracts.map(c => {
+        const nextInvoiceDate = updateContractNextInvoiceDate({ ...c, id: '', createdAt: '', updatedAt: '' } as Contract) || undefined;
+        return {
+          ...toDbFormat(c),
+          next_invoice_date: nextInvoiceDate,
+          updated_at: new Date().toISOString(),
+          user_id: userId,
+        };
+      });
+
+      const { error } = await supabase.from('contracts').upsert(contractsToUpsert, { onConflict: 'contract_number' });
+      if (error) throw error;
+      return contractsToUpsert.length;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contracts', userId] });
+    },
+    onError: (error) => {
+      toast({ title: 'Import failed', description: error.message, variant: 'destructive' });
+    }
+  });
+
+  const clearAllMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('contracts').delete().eq('user_id', userId);
+      if (error) throw error;
+      return true;
+    },
+    onSuccess: () => {
+      toast({ title: 'All contracts cleared' });
+      queryClient.invalidateQueries({ queryKey: ['contracts', userId] });
+    },
+    onError: (error) => {
+      toast({ title: 'Clear failed', description: error.message, variant: 'destructive' });
+    }
+  });
+
+  // Callbacks wrapper for the rest of the application
+  const addContract = useCallback(async (contract: Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>) => {
+    return addMutation.mutateAsync(contract);
+  }, [addMutation]);
 
   const updateContract = useCallback(async (id: string, updates: Partial<Contract>) => {
-    // Need to fetch current contract to calculate next invoice date properly
-    const current = contracts.find(c => c.id === id);
-    if (!current) return;
-
-    const updatedContract = { ...current, ...updates };
-
-    if (updates.billingPeriod || updates.invoiceDay || updates.quarterlyMonths || updates.startDate) {
-      updatedContract.nextInvoiceDate = updateContractNextInvoiceDate(updatedContract) || undefined;
-    }
-
-    const payload = {
-      ...toDbFormat(updates),
-      next_invoice_date: updatedContract.nextInvoiceDate,
-      updated_at: new Date().toISOString(),
-    };
-
-    const { error } = await supabase
-      .from('contracts')
-      .update(payload)
-      .eq('id', id);
-
-    if (error) {
-      toast({ title: 'Update failed', description: error.message, variant: 'destructive' });
-    } else {
-      setContracts(prev => prev.map(c => c.id === id ? { ...c, ...updates, nextInvoiceDate: updatedContract.nextInvoiceDate } : c));
-      toast({ title: 'Contract updated' });
-    }
-  }, [contracts, toast]);
+    return updateMutation.mutateAsync({ id, updates });
+  }, [updateMutation]);
 
   const deleteContract = useCallback(async (id: string) => {
-    const { error } = await supabase.from('contracts').delete().eq('id', id);
-    if (error) {
-      toast({ title: 'Delete failed', description: error.message, variant: 'destructive' });
-    } else {
-      setContracts(prev => prev.filter(c => c.id !== id));
-      toast({ title: 'Contract deleted' });
-    }
-  }, [toast]);
+    return deleteMutation.mutateAsync(id);
+  }, [deleteMutation]);
 
   const terminateContract = useCallback(async (id: string, terminationDate: string, reason: string) => {
-    await updateContract(id, {
-      status: 'pulled_out',
-      terminationDate,
-      terminationReason: reason
+    return updateMutation.mutateAsync({
+      id,
+      updates: {
+        status: 'pulled_out',
+        terminationDate,
+        terminationReason: reason
+      }
     });
-  }, [updateContract]);
+  }, [updateMutation]);
 
   const getContract = useCallback((id: string) => {
     return contracts.find(contract => contract.id === id);
   }, [contracts]);
 
   const importContracts = useCallback(async (newContracts: Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>[]) => {
-    const userId = getDbUserId();
-
-    // Prepare bulk insert data
-    const contractsToUpsert = newContracts.map(c => {
-      const nextInvoiceDate = updateContractNextInvoiceDate({ ...c, id: '', createdAt: '', updatedAt: '' } as Contract) || undefined;
-
-      const dbPayload = {
-        ...toDbFormat(c),
-        next_invoice_date: nextInvoiceDate,
-        updated_at: new Date().toISOString(),
-        user_id: userId, // Inject user_id
-      };
-
-      return dbPayload;
-    });
-
-    console.log('Importing contracts payload:', contractsToUpsert); // Debug log
-
-    // We assume 'contract_number' is a unique constraint in DB or we use onConflict
-    const { error } = await supabase
-      .from('contracts')
-      .upsert(contractsToUpsert, { onConflict: 'contract_number' });
-    if (error) {
-      console.error('Import error:', error);
-      toast({ title: 'Import failed', description: error.message, variant: 'destructive' });
-      return 0;
-    }
-
-    await fetchContracts();
-    return contractsToUpsert.length;
-  }, [fetchContracts, toast, user]);
+    return importMutation.mutateAsync(newContracts);
+  }, [importMutation]);
 
   const clearAllContracts = useCallback(async () => {
-    const userId = getDbUserId();
-    const { error } = await supabase
-      .from('contracts')
-      .delete()
-      .eq('user_id', userId);
-
-    if (error) {
-      console.error('Clear all error:', error);
-      toast({ title: 'Clear failed', description: error.message, variant: 'destructive' });
-      return false;
-    }
-
-    setContracts([]);
-    toast({ title: 'All contracts cleared' });
-    return true;
-  }, [toast, user]);
+    return clearAllMutation.mutateAsync();
+  }, [clearAllMutation]);
 
   // Statistics
   const stats = useMemo(() => {
@@ -295,6 +334,8 @@ export function useContracts() {
       byInvoiceDay,
     };
   }, [contracts]);
+
+  const isLoading = isFetching || addMutation.isPending || updateMutation.isPending || deleteMutation.isPending || importMutation.isPending || clearAllMutation.isPending;
 
   return {
     contracts,

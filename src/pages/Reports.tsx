@@ -9,8 +9,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useContracts } from '@/hooks/useContracts';
-import { 
-  Download, 
+import { useBillingPeriods } from '@/hooks/useBillingPeriods';
+import {
+  Download,
   FileText,
   TrendingUp,
   Users,
@@ -24,8 +25,9 @@ import { exportMonthlyContractsToExcel, getAvailableYears, getContractsDueInMont
 
 export default function Reports() {
   const { contracts, stats: contractStats } = useContracts();
+  const { allPeriods } = useBillingPeriods();
   const { toast } = useToast();
-  
+
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState<number>(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(currentDate.getFullYear());
@@ -37,10 +39,10 @@ export default function Reports() {
   );
 
   const handleExportMonthly = () => {
-    const { count, filename } = exportMonthlyContractsToExcel(contracts, selectedMonth, selectedYear);
+    const { count, filename } = exportMonthlyContractsToExcel(contracts, selectedMonth, selectedYear, allPeriods);
     if (count === 0) {
-      toast({ 
-        title: 'No contracts', 
+      toast({
+        title: 'No contracts',
         description: `No contracts are due in ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`,
         variant: 'destructive'
       });
@@ -94,8 +96,8 @@ export default function Reports() {
           <div className="flex flex-wrap items-end gap-4">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium">Month:</span>
-              <Select 
-                value={String(selectedMonth)} 
+              <Select
+                value={String(selectedMonth)}
                 onValueChange={(v) => setSelectedMonth(parseInt(v))}
               >
                 <SelectTrigger className="w-[120px]">
@@ -113,8 +115,8 @@ export default function Reports() {
 
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium">Year:</span>
-              <Select 
-                value={String(selectedYear)} 
+              <Select
+                value={String(selectedYear)}
                 onValueChange={(v) => setSelectedYear(parseInt(v))}
               >
                 <SelectTrigger className="w-[90px]">
