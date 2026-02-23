@@ -68,17 +68,17 @@ export function useAuth() {
     };
   }, []);
 
-  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
+  const login = useCallback(async (email: string, password: string): Promise<{ success: boolean, error?: string }> => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (error) throw error;
-      return true;
-    } catch (error) {
+      return { success: true };
+    } catch (error: any) {
       console.error("Login Error:", error);
-      return false;
+      return { success: false, error: error.message };
     }
   }, []);
 
@@ -91,7 +91,7 @@ export function useAuth() {
     }
   }, []);
 
-  const register = useCallback(async (email: string, name: string, password: string): Promise<boolean> => {
+  const register = useCallback(async (email: string, name: string, password: string): Promise<{ success: boolean, error?: string }> => {
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -103,14 +103,14 @@ export function useAuth() {
         }
       });
       if (error) throw error;
-      return true;
-    } catch (error) {
+      return { success: true };
+    } catch (error: any) {
       console.error("Registration Error:", error);
-      return false;
+      return { success: false, error: error.message };
     }
   }, []);
 
-  const resetPassword = useCallback(async (email: string): Promise<boolean> => {
+  const resetPassword = useCallback(async (email: string): Promise<{ success: boolean, error?: string }> => {
     try {
       // In a real flow, this sends an email that links back to a reset page.
       // We are dropping the `newPassword` second argument as Supabase requires
@@ -119,10 +119,10 @@ export function useAuth() {
         redirectTo: window.location.origin + '/reset-password',
       });
       if (error) throw error;
-      return true;
-    } catch (error) {
+      return { success: true };
+    } catch (error: any) {
       console.error("Reset Password Error:", error);
-      return false;
+      return { success: false, error: error.message };
     }
   }, []);
 
