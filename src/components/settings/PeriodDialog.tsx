@@ -10,7 +10,79 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { BillingPeriodConfig } from '@/types/contracts';
+
+function ColorPickerWithApply({
+  label,
+  value,
+  onChange
+}: {
+  label: string;
+  value: string;
+  onChange: (colorHex: string) => void;
+}) {
+  const [tempColor, setTempColor] = useState(`#${value}`);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (open) setTempColor(`#${value}`);
+  }, [open, value]);
+
+  const handleApply = () => {
+    onChange(tempColor.replace('#', '').toUpperCase());
+    setOpen(false);
+  };
+
+  return (
+    <div className="grid gap-2">
+      <Label>{label}</Label>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <div className="flex items-center gap-3 cursor-pointer">
+            <div
+              className="w-12 h-12 rounded border"
+              style={{ backgroundColor: `#${value}` }}
+            />
+            <span className="font-mono text-sm uppercase">#{value}</span>
+          </div>
+        </PopoverTrigger>
+        <PopoverContent className="w-64" align="start">
+          <div className="grid gap-4">
+            <div className="space-y-2">
+              <h4 className="font-medium leading-none">Pick Color</h4>
+              <p className="text-sm text-muted-foreground">Select a color and click Apply.</p>
+            </div>
+            <div className="flex gap-2 items-center">
+              <Input
+                type="color"
+                value={tempColor}
+                onChange={(e) => setTempColor(e.target.value)}
+                className="w-12 h-12 p-1 cursor-pointer shrink-0"
+              />
+              <Input
+                type="text"
+                value={tempColor.toUpperCase()}
+                onChange={(e) => {
+                  let val = e.target.value;
+                  if (!val.startsWith('#')) val = '#' + val;
+                  setTempColor(val);
+                }}
+                className="font-mono uppercase flex-1"
+                maxLength={7}
+              />
+            </div>
+            <Button onClick={handleApply} className="w-full">Apply Color</Button>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
 
 interface PeriodDialogProps {
   open: boolean;
@@ -148,33 +220,17 @@ export function PeriodDialog({
 
           {/* Color */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="excelBg">Background Color</Label>
-              <div className="flex items-center gap-3">
-                <Input
-                  id="excelBg"
-                  type="color"
-                  value={`#${selectedColor.excelBg.replace('#', '')}`}
-                  onChange={(e) => setSelectedColor(prev => ({ ...prev, excelBg: e.target.value }))}
-                  className="w-12 h-12 p-1 cursor-pointer"
-                />
-                <span className="font-mono text-sm uppercase">#{selectedColor.excelBg.replace('#', '')}</span>
-              </div>
-            </div>
+            <ColorPickerWithApply
+              label="Background Color"
+              value={selectedColor.excelBg}
+              onChange={(hex) => setSelectedColor(prev => ({ ...prev, excelBg: hex }))}
+            />
 
-            <div className="grid gap-2">
-              <Label htmlFor="excelText">Text Color</Label>
-              <div className="flex items-center gap-3">
-                <Input
-                  id="excelText"
-                  type="color"
-                  value={`#${selectedColor.excelText.replace('#', '')}`}
-                  onChange={(e) => setSelectedColor(prev => ({ ...prev, excelText: e.target.value }))}
-                  className="w-12 h-12 p-1 cursor-pointer"
-                />
-                <span className="font-mono text-sm uppercase">#{selectedColor.excelText.replace('#', '')}</span>
-              </div>
-            </div>
+            <ColorPickerWithApply
+              label="Text Color"
+              value={selectedColor.excelText}
+              onChange={(hex) => setSelectedColor(prev => ({ ...prev, excelText: hex }))}
+            />
           </div>
 
           {/* Billing Logic */}
