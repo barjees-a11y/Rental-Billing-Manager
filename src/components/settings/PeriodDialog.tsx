@@ -76,7 +76,7 @@ function ColorPickerWithApply({
                 maxLength={7}
               />
             </div>
-            <Button onClick={handleApply} className="w-full">Apply Color</Button>
+            <Button onClick={handleApply} className="w-full">Confirm Color</Button>
           </div>
         </PopoverContent>
       </Popover>

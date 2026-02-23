@@ -26,27 +26,24 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-
     if (isResetting) {
-      const success = resetPassword(email, newPassword);
+      // Supabase sends a reset email, it doesn't instantly take a new password directly here
+      const success = await resetPassword(email);
       if (success) {
         toast({
-          title: 'Password Reset Successful',
-          description: 'You can now login with your new password.',
+          title: 'Reset Email Sent',
+          description: 'If an account exists, a password reset link has been sent.',
         });
         setIsResetting(false);
-        setPassword(''); // Clear password field
       } else {
         toast({
           title: 'Reset Failed',
-          description: 'User not found. Please check existing users.',
+          description: 'Could not send reset email. Please try again.',
           variant: 'destructive',
         });
       }
     } else {
-      const success = login(email, password, rememberMe);
+      const success = await login(email, password);
 
       if (success) {
         toast({
@@ -57,7 +54,7 @@ export default function Login() {
       } else {
         toast({
           title: 'Login failed',
-          description: 'Invalid email or password. Try barjees@saharaedoc.com / rental123',
+          description: 'Invalid email or password. Please verify your credentials or sign up.',
           variant: 'destructive',
         });
       }
@@ -147,31 +144,10 @@ export default function Login() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-2">
-                <Label htmlFor="newPassword">New Password</Label>
-                <div className="relative">
-                  <Input
-                    id="newPassword"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="New Password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    className="bg-background/50 pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground text-center">
+                  We'll send a password recovery link to your email.
+                </p>
               </div>
             )}
 

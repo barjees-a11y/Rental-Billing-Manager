@@ -1,134 +1,135 @@
-import { useCallback } from 'react';
-import { useLocalStorage } from './useLocalStorage';
-import { User } from '@/types/contracts';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/lib/supabase';
+import { User as AuthUser } from '@supabase/supabase-js';
 
-const AUTH_KEY = 'rental_billing_auth';
-const USERS_KEY = 'rental_billing_users';
+// Re-map the Supabase AuthUser to our internal User type to minimize refactoring in other files
+export interface AppUser {
+  id: string;
+  email: string;
+  name?: string;
+}
 
 interface AuthState {
-  user: User | null;
+  user: AppUser | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
 }
 
 export function useAuth() {
-  const [authState, setAuthState] = useLocalStorage<AuthState>(AUTH_KEY, {
+  const [authState, setAuthState] = useState<AuthState>({
     user: null,
     isAuthenticated: false,
+    isLoading: true,
   });
 
-  const [users, setUsers] = useLocalStorage<User[]>(USERS_KEY, [
-    // Default admin user
-    {
-      id: '4ffbfe41-03a3-4983-9bdc-e72ab761df38',
-      email: 'barjees@saharaedoc',
-      name: 'Admin User',
-      password: 'rental123', // Default password
-      createdAt: new Date().toISOString(),
-    }
-  ]);
+  // Handle mapping from Supabase User to App User
+  const mapUser = (supabaseUser: AuthUser | null): AppUser | null => {
+    if (!supabaseUser || !supabaseUser.email) return null;
+    return {
+      id: supabaseUser.id,
+      email: supabaseUser.email,
+      name: supabaseUser.user_metadata?.name || supabaseUser.email.split('@')[0],
+    };
+  };
 
-  const login = useCallback((email: string, password: string, remember: boolean = true): boolean => {
-    // Fail-safe for default admin login
-    if (email.toLowerCase() === 'barjees@saharaedoc.com' && password === 'rental123') {
-      const existingAdmin = users.find(u => u.email.toLowerCase() === 'barjees@saharaedoc.com');
+  useEffect(() => {
+    // 1. Get initial session
+    const getInitialSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
 
-      let adminUser = existingAdmin;
-      if (!adminUser) {
-        // Re-create admin if missing
-        adminUser = {
-          id: '4ffbfe41-03a3-4983-9bdc-e72ab761df38',
-          email: 'barjees@saharaedoc.com',
-          name: 'Admin User',
-          password: 'rental123',
-          createdAt: new Date().toISOString(),
-        };
-        setUsers(prev => [...prev, adminUser!]);
+        setAuthState({
+          user: mapUser(session?.user || null),
+          isAuthenticated: !!session?.user,
+          isLoading: false,
+        });
+      } catch (error) {
+        console.error("Error getting initial session:", error);
+        setAuthState({ user: null, isAuthenticated: false, isLoading: false });
       }
-
-      setAuthState({
-        user: adminUser!,
-        isAuthenticated: true,
-      });
-      return true;
-    }
-
-    // Simple auth - in production this would validate against backend
-    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-
-    // Check against stored password or default if not set (for backward compatibility)
-    const storedPassword = user?.password || 'rental123';
-
-    if (user && password === storedPassword) {
-      setAuthState({
-        user,
-        isAuthenticated: true,
-      });
-      return true;
-    }
-    return false;
-  }, [users, setAuthState, setUsers]);
-
-  const logout = useCallback(() => {
-    setAuthState({
-      user: null,
-      isAuthenticated: false,
-    });
-  }, [setAuthState]);
-
-  const register = useCallback((email: string, name: string, password: string): boolean => {
-    if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
-      return false; // User already exists
-    }
-
-    const newUser: User = {
-      id: crypto.randomUUID(),
-      email,
-      name,
-      password, // Store with password
-      createdAt: new Date().toISOString(),
     };
 
-    setUsers(prev => [...prev, newUser]);
-    setAuthState({
-      user: newUser,
-      isAuthenticated: true,
-    });
+    getInitialSession();
 
-    return true;
-  }, [users, setUsers, setAuthState]);
-
-  const resetPassword = useCallback((email: string, newPassword: string): boolean => {
-    const userIndex = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
-
-    if (userIndex === -1) {
-      // Special handling for default admin if missing
-      if (email.toLowerCase() === 'barjees@saharaedoc.com') {
-        const newAdmin: User = {
-          id: '4ffbfe41-03a3-4983-9bdc-e72ab761df38',
-          email: 'barjees@saharaedoc.com',
-          name: 'Admin User',
-          password: newPassword,
-          createdAt: new Date().toISOString(),
-        };
-        setUsers(prev => [...prev, newAdmin]);
-        return true;
+    // 2. Listen for auth changes (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setAuthState({
+          user: mapUser(session?.user || null),
+          isAuthenticated: !!session?.user,
+          isLoading: false,
+        });
       }
-      return false; // User not found
-    }
+    );
 
-    const updatedUsers = [...users];
-    updatedUsers[userIndex] = {
-      ...updatedUsers[userIndex],
-      password: newPassword
+    return () => {
+      subscription.unsubscribe();
     };
+  }, []);
 
-    setUsers(updatedUsers);
-    return true;
-  }, [users, setUsers]);
+  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error("Login Error:", error);
+      return false;
+    }
+  }, []);
+
+  const logout = useCallback(async (): Promise<void> => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch (error) {
+      console.error("Logout Error:", error);
+    }
+  }, []);
+
+  const register = useCallback(async (email: string, name: string, password: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name: name,
+          }
+        }
+      });
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error("Registration Error:", error);
+      return false;
+    }
+  }, []);
+
+  const resetPassword = useCallback(async (email: string): Promise<boolean> => {
+    try {
+      // In a real flow, this sends an email that links back to a reset page.
+      // We are dropping the `newPassword` second argument as Supabase requires
+      // the user to click the email link first before they can type a new password.
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/reset-password',
+      });
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error("Reset Password Error:", error);
+      return false;
+    }
+  }, []);
 
   return {
     user: authState.user,
     isAuthenticated: authState.isAuthenticated,
+    isAuthLoading: authState.isLoading,
     login,
     logout,
     register,

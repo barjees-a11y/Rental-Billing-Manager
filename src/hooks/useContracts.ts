@@ -17,12 +17,10 @@ export function useContracts() {
     return regex.test(uuid);
   };
 
-  // Helper to get a valid user ID for DB
   const getDbUserId = () => {
-    if (!user?.id) return '4ffbfe41-03a3-4983-9bdc-e72ab761df38';
-    if (isValidUUID(user.id)) return user.id;
-    console.warn('User ID is not a valid UUID:', user.id, 'Using fallback Supabase UID.');
-    return '4ffbfe41-03a3-4983-9bdc-e72ab761df38';
+    // With real Supabase auth, we must strict-return the auth user ID.
+    // If there is no user, return empty string so queries naturally return nothing.
+    return user?.id || '';
   };
 
   const userId = getDbUserId();

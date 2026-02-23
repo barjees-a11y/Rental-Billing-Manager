@@ -4,18 +4,10 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { BillingPeriodConfig, DEFAULT_BILLING_PERIODS } from '@/types/contracts';
 
-// Map specific ID logic from other hooks
-const getDbUserId = (user: any) => {
-  if (!user?.id) return '4ffbfe41-03a3-4983-9bdc-e72ab761df38';
-  const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (regex.test(user.id)) return user.id;
-  return '4ffbfe41-03a3-4983-9bdc-e72ab761df38';
-};
-
 export function useBillingPeriods() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const userId = getDbUserId(user);
+  const userId = user?.id || '';
 
   // Fetch settings from Supabase
   const { data: customPeriods = [], isLoading: isFetching } = useQuery({
