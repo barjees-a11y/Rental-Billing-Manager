@@ -1,4 +1,5 @@
-import XLSX from 'xlsx-js-style';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { Contract, BillingPeriodConfig } from '@/types/contracts';
 import { getQuarterDisplayMonth, QuarterDefinition } from '@/lib/billingPeriodColors';
 
@@ -12,166 +13,142 @@ const QUARTERS = [
 
 /**
  * Export contracts to single-sheet Excel with period-based row coloring
- * Headers: Contract#, Customer, Machine/Site, Period, Invoice Day, Quarterly Months, Q1, Q2, Q3, Q4
  */
-export function exportContractsToExcel(contracts: Contract[], allPeriods: BillingPeriodConfig[] = []) {
-  const wb = XLSX.utils.book_new();
+export async function exportContractsToExcel(contracts: Contract[], allPeriods: BillingPeriodConfig[] = []) {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('MANUAL BILLING', { views: [{ state: 'frozen', ySplit: 1 }] });
 
-  // Create single billing sheet
-  const ws = createBillingSheet(contracts, allPeriods);
-  XLSX.utils.book_append_sheet(wb, ws, 'MANUAL BILLING');
+  createBillingSheet(ws, contracts, allPeriods);
 
-  // Generate filename with date
   const date = new Date().toISOString().split('T')[0];
   const filename = `Rental_Billing_${date}.xlsx`;
 
-  XLSX.writeFile(wb, filename);
+  const buffer = await wb.xlsx.writeBuffer();
+  saveAs(new Blob([buffer]), filename);
 }
 
 /**
- * Create billing sheet with quarterly columns and period-based row coloring
- * Columns: Contract#, Customer, Machine/Site, Period, Invoice Day, Quarterly Months, Q1, Q2, Q3, Q4
+ * Configure billing sheet with quarterly columns and period-based row coloring
  */
-function createBillingSheet(contracts: Contract[], allPeriods: BillingPeriodConfig[]): XLSX.WorkSheet {
-  // Build header row with SI No as first column
-  const headers = [
-    'SI No', 'Contract#', 'Customer', 'Machine/Site', 'Period', 'Invoice Day', 'Billing Schedule',
-    ...QUARTERS.map(q => q.label)
+function createBillingSheet(ws: ExcelJS.Worksheet, contracts: Contract[], allPeriods: BillingPeriodConfig[]): void {
+  // Define columns
+  ws.columns = [
+    { header: 'SI No', key: 'siNo', width: 8 },
+    { header: 'Contract#', key: 'contractNumber', width: 14 },
+    { header: 'Customer', key: 'customer', width: 42 },
+    { header: 'Machine/Site', key: 'machineSite', width: 37 },
+    { header: 'Period', key: 'period', width: 12 },
+    { header: 'Invoice Day', key: 'invoiceDay', width: 14 },
+    { header: 'Billing Schedule', key: 'billingSchedule', width: 20 },
+    ...QUARTERS.map((q, i) => ({ header: q.label, key: `q${i + 1}`, width: 18 }))
   ];
 
-  // Build data rows with SI No
-  const rows = contracts.map((contract, index) => {
-    const row: (string | number)[] = [
-      index + 1,  // SI No (1-based index)
-      contract.contractNumber,
-      contract.customer,
-      contract.machineSite,
-      contract.billingPeriod,
-      contract.invoiceDay,
-      // MB period doesn't show billing schedule - it bills all months
-      contract.billingPeriod === 'MB' ? '' : (contract.quarterlyMonths || ''),
-    ];
+  // Apply header styling - dark blue background (#1E3A5F) with gold text (#C9A227)
+  ws.getRow(1).eachCell((cell) => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
+    cell.font = { bold: true, color: { argb: 'FFC9A227' } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FF2D4A6F' } },
+      bottom: { style: 'thin', color: { argb: 'FF2D4A6F' } },
+      left: { style: 'thin', color: { argb: 'FF2D4A6F' } },
+      right: { style: 'thin', color: { argb: 'FF2D4A6F' } },
+    };
+  });
+  ws.getRow(1).height = 35;
 
-    // Add quarter billing months (only the specific month, not all)
-    QUARTERS.forEach((quarter) => {
-      row.push(getQuarterDisplayMonth(contract.billingPeriod, contract.quarterlyMonths, quarter));
+  // Build data rows
+  contracts.forEach((contract, index) => {
+    const rowData: any = {
+      siNo: index + 1,
+      contractNumber: contract.contractNumber,
+      customer: contract.customer,
+      machineSite: contract.machineSite,
+      period: contract.billingPeriod,
+      invoiceDay: contract.invoiceDay,
+      billingSchedule: contract.billingPeriod === 'MB' ? '' : (contract.quarterlyMonths || '')
+    };
+
+    QUARTERS.forEach((quarter, i) => {
+      rowData[`q${i + 1}`] = getQuarterDisplayMonth(contract.billingPeriod, contract.quarterlyMonths, quarter);
     });
 
-    return row;
-  });
+    const row = ws.addRow(rowData);
 
-  // Create worksheet
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-
-  // Apply header styling - dark blue with gold text
-  applyHeaderStyling(ws);
-
-  // Apply period-based row coloring (entire row colored by period)
-  applyPeriodRowColoring(ws, contracts, allPeriods);
-
-  // Column widths (updated for SI No column)
-  ws['!cols'] = [
-    { wch: 6 },   // SI No
-    { wch: 12 },  // Contract#
-    { wch: 40 },  // Customer
-    { wch: 35 },  // Machine/Site
-    { wch: 10 },  // Period
-    { wch: 12 },  // Invoice Day
-    { wch: 18 },  // Quarterly Months
-    { wch: 16 },  // Q1
-    { wch: 16 },  // Q2
-    { wch: 16 },  // Q3
-    { wch: 16 },  // Q4
-  ];
-
-  // Enable AutoFilter for dropdown sorting (K column now with SI No)
-  ws['!autofilter'] = { ref: ws['!ref'] || 'A1:K1' };
-
-  return ws;
-}
-
-/**
- * Apply header styling - dark blue background (#1E3A5F) with gold text (#C9A227)
- */
-function applyHeaderStyling(ws: XLSX.WorkSheet): void {
-  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-
-  for (let C = range.s.c; C <= range.e.c; C++) {
-    const headerCell = ws[XLSX.utils.encode_cell({ r: 0, c: C })];
-    if (headerCell) {
-      headerCell.s = {
-        fill: { fgColor: { rgb: '1E3A5F' } },
-        font: { bold: true, color: { rgb: 'C9A227' } },
-        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
-        border: {
-          top: { style: 'thin', color: { rgb: '2D4A6F' } },
-          bottom: { style: 'thin', color: { rgb: '2D4A6F' } },
-          left: { style: 'thin', color: { rgb: '2D4A6F' } },
-          right: { style: 'thin', color: { rgb: '2D4A6F' } },
-        },
-      };
-    }
-  }
-
-  // Set header row height
-  ws['!rows'] = [{ hpt: 35 }];
-}
-
-/**
- * Apply period-based coloring to entire rows
- * Each row gets the background color of its billing period across ALL columns
- * This ensures consistent visual grouping by billing period type
- */
-function applyPeriodRowColoring(ws: XLSX.WorkSheet, contracts: Contract[], allPeriods: BillingPeriodConfig[]): void {
-  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-  const totalCols = range.e.c + 1;
-
-  contracts.forEach((contract, rowIndex) => {
+    // Apply period-based coloring to entire rows
     const periodConfig = allPeriods.find(p => p.code === contract.billingPeriod);
-    const periodColors = periodConfig?.color;
+    if (periodConfig?.color) {
+      let bgColor = periodConfig.color.excelBg.replace('#', '');
+      let textColor = periodConfig.color.excelText.replace('#', '');
 
-    if (!periodColors) return;
+      if (bgColor.length === 6) bgColor = 'FF' + bgColor;
+      if (textColor.length === 6) textColor = 'FF' + textColor;
 
-    const row = rowIndex + 1; // Skip header row (row 0)
-
-    // Apply styling to ALL cells in the row - create cell if it doesn't exist
-    for (let col = 0; col < totalCols; col++) {
-      const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-
-      // Create cell if it doesn't exist (for empty quarter columns)
-      if (!ws[cellAddress]) {
-        ws[cellAddress] = { t: 's', v: '' };
-      }
-
-      const cell = ws[cellAddress];
-
-      // Apply full styling to every cell in the row
-      cell.s = {
-        fill: {
-          patternType: 'solid',
-          fgColor: { rgb: periodColors.excelBg }
-        },
-        font: {
-          bold: col === 4, // Bold the Period column (now at index 4 due to SI No)
-          color: { rgb: periodColors.excelText },
-          sz: 11
-        },
-        alignment: {
-          horizontal: col <= 3 ? 'left' : 'center',  // SI No, Contract#, Customer, Machine/Site left-aligned
-          vertical: 'center'
-        },
-        border: {
-          top: { style: 'thin', color: { rgb: '000000' } },
-          bottom: { style: 'thin', color: { rgb: '000000' } },
-          left: { style: 'thin', color: { rgb: '000000' } },
-          right: { style: 'thin', color: { rgb: '000000' } },
-        },
-      };
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor.toUpperCase() } };
+        cell.font = {
+          bold: colNumber === 5, // Bold the Period column
+          color: { argb: textColor.toUpperCase() },
+          size: 11
+        };
+        cell.alignment = {
+          horizontal: colNumber <= 4 ? 'left' : 'center',
+          vertical: 'middle'
+        };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF000000' } },
+          bottom: { style: 'thin', color: { argb: 'FF000000' } },
+          left: { style: 'thin', color: { argb: 'FF000000' } },
+          right: { style: 'thin', color: { argb: 'FF000000' } },
+        };
+      });
     }
   });
+
+  // Enable AutoFilter
+  ws.autoFilter = 'A1:K1';
 }
 
 // Legacy export for Reports page
-export function exportContractsReport(contracts: Contract[], allPeriods: BillingPeriodConfig[] = []) {
-  exportContractsToExcel(contracts, allPeriods);
+export async function exportContractsReport(contracts: Contract[], allPeriods: BillingPeriodConfig[] = []) {
+  await exportContractsToExcel(contracts, allPeriods);
+}
+
+/**
+ * Export top customers to single-sheet Excel
+ */
+export async function exportTopCustomersToExcel(topCustomers: { customer: string, count: number }[]) {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Top Customers', { views: [{ state: 'frozen', ySplit: 1 }] });
+
+  ws.columns = [
+    { header: 'Rank', key: 'rank', width: 10 },
+    { header: 'Customer Name', key: 'customer', width: 40 },
+    { header: 'Contract Count', key: 'count', width: 20 },
+  ];
+
+  ws.getRow(1).eachCell((cell) => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } }; // slate-200
+    cell.font = { bold: true, color: { argb: 'FF0F172A' } }; // slate-900
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+      bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+      left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+      right: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+    };
+  });
+  ws.getRow(1).height = 30;
+
+  topCustomers.forEach((c, i) => {
+    ws.addRow({ rank: i + 1, customer: c.customer, count: c.count });
+  });
+
+  const date = new Date().toISOString().split('T')[0];
+  const filename = `Top_Customers_${date}.xlsx`;
+
+  const buffer = await wb.xlsx.writeBuffer();
+  saveAs(new Blob([buffer]), filename);
+
+  return { count: topCustomers.length, filename };
 }

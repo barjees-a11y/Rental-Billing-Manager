@@ -192,26 +192,26 @@ export default function Contracts() {
         </div>
 
         {/* Action Bar */}
-        <div className="flex flex-wrap items-center justify-end gap-3 mt-1">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1 w-full sm:w-auto">
           <Button
             variant="outline"
             onClick={() => setShowAddForm(true)}
-            className="hover:bg-primary/10 transition-colors"
+            className="hover:bg-primary/10 transition-colors flex-1 sm:flex-none h-9 sm:h-10 text-xs sm:text-sm px-2 sm:px-4"
           >
-            <Plus className="h-4 w-4 mr-2 text-primary" />
-            New Contract
+            <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 text-primary shrink-0" />
+            <span className="truncate">New Contract</span>
           </Button>
 
           <Button
             variant="default"
-            className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 shadow-lg shadow-primary/20"
-            onClick={() => {
-              const { count, filename } = exportMonthlyContractsToExcel(contracts, currentMonthNum, currentYear, allPeriods);
+            className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 shadow-lg shadow-primary/20 flex-1 sm:flex-none h-9 sm:h-10 text-xs sm:text-sm px-2 sm:px-4"
+            onClick={async () => {
+              const { count, filename } = await exportMonthlyContractsToExcel(contracts, currentMonthNum, currentYear, allPeriods);
               toast({ title: 'Export complete', description: `${count} contracts exported to ${filename}` });
             }}
           >
-            <Download className="h-4 w-4 mr-2" />
-            Export Due in {currentMonth}
+            <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 shrink-0" />
+            <span className="truncate">Export Due</span>
           </Button>
         </div>
       </div>
@@ -244,40 +244,42 @@ export default function Contracts() {
           </TabsList>
 
           {/* Inline Filters */}
-          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[200px]">
-            <div className="relative flex-1 w-full min-w-[150px] max-w-[280px]">
+          <div className="flex flex-wrap items-center gap-2 w-full mt-2 sm:mt-0 sm:flex-1 sm:w-auto">
+            <div className="relative w-full sm:flex-1 sm:min-w-[150px] sm:max-w-[280px]">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Search..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-8 h-8 text-sm"
+                className="pl-8 h-9 sm:h-10 text-xs sm:text-sm w-full"
               />
             </div>
 
-            <Select value={periodFilter} onValueChange={(v) => setPeriodFilter(v as any)}>
-              <SelectTrigger className="w-[120px] h-8 text-xs">
-                <SelectValue placeholder="Period" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Periods</SelectItem>
-                {Object.entries(BILLING_PERIOD_LABELS).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{key}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex w-full sm:w-auto gap-2">
+              <Select value={periodFilter} onValueChange={(v) => setPeriodFilter(v as any)}>
+                <SelectTrigger className="flex-1 sm:w-[120px] h-9 sm:h-10 text-xs sm:text-sm">
+                  <SelectValue placeholder="Period" />
+                </SelectTrigger>
+                <SelectContent className="z-[100]">
+                  <SelectItem value="all">All Periods</SelectItem>
+                  {Object.entries(BILLING_PERIOD_LABELS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>{key}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <Select value={dayFilter as any} onValueChange={(v) => setDayFilter(v === 'all' ? 'all' : parseInt(v) as InvoiceDay)}>
-              <SelectTrigger className="w-[100px] h-8 text-xs">
-                <SelectValue placeholder="Day" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Days</SelectItem>
-                <SelectItem value="5">5th</SelectItem>
-                <SelectItem value="15">15th</SelectItem>
-                <SelectItem value="25">25th</SelectItem>
-              </SelectContent>
-            </Select>
+              <Select value={dayFilter === 'all' ? 'all' : dayFilter.toString()} onValueChange={(v) => setDayFilter(v === 'all' ? 'all' : parseInt(v) as InvoiceDay)}>
+                <SelectTrigger className="flex-1 sm:w-[100px] h-9 sm:h-10 text-xs sm:text-sm">
+                  <SelectValue placeholder="Day" />
+                </SelectTrigger>
+                <SelectContent className="z-[100]">
+                  <SelectItem value="all">All Days</SelectItem>
+                  <SelectItem value="5">5th</SelectItem>
+                  <SelectItem value="15">15th</SelectItem>
+                  <SelectItem value="25">25th</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 

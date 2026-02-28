@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,16 +9,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus } from 'lucide-react';
+import { Plus, Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
 import { useContracts } from '@/hooks/useContracts';
 import { useToast } from '@/hooks/use-toast';
 import { BillingPeriod, InvoiceDay, QuarterlyMonths, BILLING_PERIOD_LABELS } from '@/types/contracts';
 import { format } from 'date-fns';
 
 export function QuickAddContractForm({ onSuccess }: { onSuccess?: () => void }) {
-  const { addContract } = useContracts();
-  const { toast } = useToast();
-
   const [formData, setFormData] = useState({
     contractNumber: '',
     customer: '',
@@ -28,6 +41,26 @@ export function QuickAddContractForm({ onSuccess }: { onSuccess?: () => void }) 
     quarterlyMonths: undefined as QuarterlyMonths | undefined,
     startDate: format(new Date(), 'yyyy-MM-dd'),
   });
+
+  const [useExistingCustomer, setUseExistingCustomer] = useState(false);
+  const [openCustomerDropdown, setOpenCustomerDropdown] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState('');
+
+  const { contracts, addContract } = useContracts();
+  const { toast } = useToast();
+
+  const existingCustomers = useMemo(() => {
+    const activeContracts = contracts.filter(c => c.status !== 'pulled_out' && c.status !== 'archived');
+    const customers = new Set(activeContracts.map(c => c.customer));
+    return Array.from(customers).sort((a, b) => a.localeCompare(b));
+  }, [contracts]);
+
+  const filteredCustomers = useMemo(() => {
+    if (!customerSearch) return existingCustomers;
+    const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const searchNormalized = normalize(customerSearch);
+    return existingCustomers.filter(c => normalize(c).includes(searchNormalized));
+  }, [existingCustomers, customerSearch]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -199,14 +232,86 @@ export function QuickAddContractForm({ onSuccess }: { onSuccess?: () => void }) 
             onChange={(e) => setFormData(prev => ({ ...prev, contractNumber: e.target.value }))}
           />
         </div>
-        <div>
-          <Label htmlFor="customer" className="text-xs mb-1 block">Customer</Label>
-          <Input
-            id="customer"
-            placeholder="Customer name"
-            value={formData.customer}
-            onChange={(e) => setFormData(prev => ({ ...prev, customer: e.target.value }))}
-          />
+        <div className="flex flex-col">
+          <div className="flex items-center justify-between mb-1">
+            <Label htmlFor="customer" className="text-xs">Customer</Label>
+            <div className="flex items-center space-x-1">
+              <Checkbox
+                id="existing-customer"
+                checked={useExistingCustomer}
+                onCheckedChange={(checked) => {
+                  setUseExistingCustomer(!!checked);
+                  setFormData(prev => ({ ...prev, customer: '' }));
+                  setCustomerSearch('');
+                }}
+              />
+              <label
+                htmlFor="existing-customer"
+                className="text-[10px] font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Existing
+              </label>
+            </div>
+          </div>
+          {useExistingCustomer ? (
+            <Popover open={openCustomerDropdown} onOpenChange={setOpenCustomerDropdown}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={openCustomerDropdown}
+                  className="w-full justify-between font-normal text-left px-3 h-10"
+                >
+                  <span className="truncate max-w-[calc(100%-20px)]">
+                    {formData.customer || <span className="text-muted-foreground">Select customer...</span>}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] sm:w-[350px] p-0 z-[10001]">
+                <Command shouldFilter={false}>
+                  <CommandInput
+                    placeholder="Search customer..."
+                    value={customerSearch}
+                    onValueChange={setCustomerSearch}
+                  />
+                  <CommandList>
+                    {filteredCustomers.length === 0 ? (
+                      <CommandEmpty>No customer found.</CommandEmpty>
+                    ) : (
+                      <CommandGroup>
+                        {filteredCustomers.map((customer) => (
+                          <CommandItem
+                            key={customer}
+                            value={customer}
+                            onSelect={() => {
+                              setFormData(prev => ({ ...prev, customer: customer }));
+                              setOpenCustomerDropdown(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4 shrink-0",
+                                formData.customer === customer ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <span className="truncate">{customer}</span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    )}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <Input
+              id="customer"
+              placeholder="Customer name"
+              value={formData.customer}
+              onChange={(e) => setFormData(prev => ({ ...prev, customer: e.target.value }))}
+            />
+          )}
         </div>
         <div>
           <Label htmlFor="machineSite" className="text-xs mb-1 block">Machine/Site</Label>

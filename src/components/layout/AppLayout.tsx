@@ -17,6 +17,13 @@ import {
   Archive,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { useAuth } from '@/hooks/useAuth';
 import { useState, useEffect } from 'react';
 
@@ -39,6 +46,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { user, logout } = useAuth();
   const [isDark, setIsDark] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     // Default to dark mode
@@ -66,9 +74,65 @@ export function AppLayout({ children }: AppLayoutProps) {
         <div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-primary/5 rounded-full blur-3xl" />
         <div className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-accent/5 rounded-full blur-3xl" />
       </div>
-      {/* Toggle button when sidebar is collapsed */}
+
+      {/* Mobile Top Header (Hidden on md+) */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-14 z-50 bg-background/80 backdrop-blur-md border-b border-border/20 flex items-center justify-between px-4">
+        <div className="flex items-center gap-3">
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2">
+                <Menu className="h-5 w-5 text-foreground" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[280px] p-0 border-r border-border/20 bg-background flex flex-col pt-0 pb-0">
+              <SheetHeader className="sr-only">
+                <SheetTitle>Navigation Menu</SheetTitle>
+              </SheetHeader>
+              <div className="flex flex-col h-full bg-sidebar">
+                <div className="h-0.5 bg-gradient-to-r from-primary via-accent to-primary/50 shrink-0" />
+                <div className="p-4 border-b border-border/20 flex items-center shrink-0">
+                  <img src={saharaLogo} alt="SAHARA" className="h-10 w-auto" />
+                </div>
+                <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+                  {navItems.map(({ path, label, icon: Icon }) => {
+                    const isActive = location.pathname === path;
+                    return (
+                      <Link
+                        key={path}
+                        to={path}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={cn(
+                          'flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-300',
+                          isActive
+                            ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-[0_0_20px_hsl(var(--primary)/0.4)] border border-primary/20'
+                            : 'text-sidebar-foreground hover:text-primary hover:bg-sidebar-accent/50'
+                        )}
+                      >
+                        <Icon className="h-5 w-5" />
+                        <span>{label}</span>
+                      </Link>
+                    );
+                  })}
+                </nav>
+                <div className="p-4 border-t border-border/20 pb-safe shrink-0">
+                  <Button variant="outline" className="w-full justify-start gap-2" onClick={logout}>
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </Button>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+          <img src={saharaLogo} alt="SAHARA Office Equipments" className="h-7 w-auto" />
+        </div>
+        <Button variant="ghost" size="icon" onClick={toggleTheme} className="h-8 w-8">
+          {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </Button>
+      </div>
+
+      {/* Toggle button when sidebar is collapsed (Desktop Only) */}
       {sidebarCollapsed && (
-        <div className="fixed left-3 top-3 z-50 flex gap-2">
+        <div className="hidden md:flex fixed left-3 top-3 z-50 gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -92,9 +156,9 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar (Hidden on Mobile) */}
       <aside className={cn(
-        "glass-sidebar flex flex-col transition-all duration-300 relative z-10",
+        "glass-sidebar hidden md:flex flex-col transition-all duration-300 relative z-10",
         sidebarCollapsed ? "w-0 overflow-hidden" : "w-64"
       )}>
         {/* Top accent bar */}
@@ -171,8 +235,8 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       {/* Main content */}
       <main className={cn(
-        "flex-1 overflow-auto transition-all duration-300",
-        sidebarCollapsed ? "pt-16" : ""
+        "flex-1 overflow-auto transition-all duration-300 pt-14 md:pt-0",
+        sidebarCollapsed ? "md:pt-16" : ""
       )}>
         <div className="p-2 lg:p-3">
           {children}

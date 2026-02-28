@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getContractsDueThisMonth } from '@/lib/invoiceDateLogic';
 import { MONTH_NAMES } from '@/lib/billingPeriodColors';
 import { exportMonthlyContractsToExcel, getAvailableYears, getContractsDueInMonth } from '@/lib/monthlyExcelExport';
+import { exportTopCustomersToExcel } from '@/lib/excelExport';
 
 export default function Reports() {
   const { contracts, stats: contractStats } = useContracts();
@@ -51,19 +52,41 @@ export default function Reports() {
     }
   };
 
-  // Group contracts by customer
-  const customerStats = contracts.reduce((acc, c) => {
-    if (!acc[c.customer]) {
-      acc[c.customer] = { count: 0 };
-    }
-    acc[c.customer].count++;
-    return acc;
-  }, {} as Record<string, { count: number }>);
+  // Group contracts by customer (matching Contracts tab: not pulled_out or archived)
+  // Normalize strings so "Company A" and "COMPANY a" count as the same entity
+  const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-  const topCustomers = Object.entries(customerStats)
-    .map(([customer, data]) => ({ customer, ...data }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 10);
+  const customerStats = contracts
+    .filter(c => c.status !== 'pulled_out' && c.status !== 'archived')
+    .reduce((acc, c) => {
+      const normalizedKey = normalize(c.customer);
+
+      // If we haven't seen this normalized version before, initialize it with the current display name
+      if (!acc[normalizedKey]) {
+        acc[normalizedKey] = { displayName: c.customer, count: 0 };
+      }
+
+      acc[normalizedKey].count++;
+      return acc;
+    }, {} as Record<string, { displayName: string, count: number }>);
+
+  const topCustomers = Object.values(customerStats)
+    .map(data => ({ customer: data.displayName, count: data.count }))
+    .filter(c => c.count >= 2)
+    .sort((a, b) => b.count - a.count);
+
+  const handleExportTopCustomers = () => {
+    const { count, filename } = exportTopCustomersToExcel(topCustomers);
+    if (count === 0) {
+      toast({
+        title: 'No customers',
+        description: 'No customers with 2 or more active contracts found.',
+        variant: 'destructive'
+      });
+    } else {
+      toast({ title: 'Export complete', description: `${count} customers exported to ${filename}` });
+    }
+  };
 
   // Contracts due this month
   const dueThisMonth = getContractsDueThisMonth(contracts);
@@ -201,28 +224,42 @@ export default function Reports() {
         </Card>
 
         {/* Top Customers */}
-        <Card className="glass-card">
-          <CardHeader>
+        <Card className="glass-card flex flex-col h-full">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" />
-              Top Customers by Contracts
+              Top Customers
             </CardTitle>
+            <Button variant="outline" size="sm" onClick={handleExportTopCustomers} className="h-8 md:flex hidden gap-1">
+              <Download className="h-3.5 w-3.5" />
+              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Export</span>
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleExportTopCustomers} className="md:hidden h-8 w-8">
+              <Download className="h-4 w-4 text-primary" />
+            </Button>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+          <CardContent className="flex-1 overflow-hidden flex flex-col pt-0">
+            <div className="space-y-3 overflow-y-auto pr-2 max-h-[350px]">
               {topCustomers.map((customer, index) => (
-                <div key={customer.customer} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
+                <div
+                  key={customer.customer}
+                  className="flex items-center justify-between md:p-0 p-3 md:bg-transparent bg-white dark:bg-card md:shadow-none shadow-sm md:rounded-none rounded-lg md:border-none border border-border/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
                       {index + 1}
                     </span>
-                    <span className="truncate max-w-[200px]">{customer.customer}</span>
+                    <span className="truncate max-w-[180px] sm:max-w-[220px] font-semibold md:font-normal text-gray-900 dark:text-gray-100" title={customer.customer}>
+                      {customer.customer}
+                    </span>
                   </div>
-                  <span className="font-bold">{customer.count} contracts</span>
+                  <span className="shrink-0 font-bold text-sm md:text-base md:bg-transparent md:text-foreground md:px-0 md:py-0 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2.5 py-0.5 rounded-full whitespace-nowrap">
+                    {customer.count} contracts
+                  </span>
                 </div>
               ))}
               {topCustomers.length === 0 && (
-                <p className="text-muted-foreground text-center py-4">No customers yet</p>
+                <p className="text-muted-foreground text-center py-4">No customers with multiple contracts yet</p>
               )}
             </div>
           </CardContent>

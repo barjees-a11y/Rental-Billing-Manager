@@ -34,7 +34,7 @@ const contractSchema = z.object({
   startDate: z.string().min(1, 'Start date is required'),
   endDate: z.string().optional(),
   pulloutDate: z.string().optional(),
-  status: z.enum(['active', 'expired', 'pulled_out', 'pending']),
+  status: z.enum(['active', 'expired', 'pulled_out', 'pending', 'suspended', 'archived']),
   notes: z.string().optional(),
 });
 
@@ -72,7 +72,7 @@ export function ContractForm({ contract, onSuccess }: ContractFormProps) {
 
   const onSubmit = async (data: ContractFormData) => {
     setIsSubmitting(true);
-    
+
     try {
       if (contract) {
         updateContract(contract.id, data as Partial<Contract>);
@@ -136,7 +136,7 @@ export function ContractForm({ contract, onSuccess }: ContractFormProps) {
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="pending">Pending</SelectItem>
                       <SelectItem value="expired">Expired</SelectItem>
-                      <SelectItem value="pulled_out">Pulled Out</SelectItem>
+                      <SelectItem value="pulled_out">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

@@ -64,7 +64,7 @@ export default function Dashboard() {
     { name: 'Active', value: contractStats.byStatus?.active || 0, color: COLORS[1] },
     { name: 'Pending', value: contractStats.byStatus?.pending || 0, color: COLORS[2] },
     { name: 'Expired', value: contractStats.byStatus?.expired || 0, color: COLORS[3] },
-    { name: 'Pulled Out', value: contractStats.byStatus?.pulled_out || 0, color: COLORS[0] },
+    { name: 'Cancelled', value: contractStats.byStatus?.pulled_out || 0, color: COLORS[0] },
   ].filter(d => d.value > 0);
 
   // Contracts due this month grouped by day
@@ -81,28 +81,28 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold gradient-text">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Welcome back! Here's your rental billing overview.
           </p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={handleDownloadAll}>
-            <Download className="h-4 w-4 mr-2" />
-            Download All
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <Button variant="outline" className="flex-1 sm:flex-none text-xs sm:text-sm h-9 sm:h-10 px-2 sm:px-4" onClick={handleDownloadAll}>
+            <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 shrink-0" />
+            <span className="truncate">Download All</span>
           </Button>
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" className="flex-1 sm:flex-none text-xs sm:text-sm h-9 sm:h-10 px-2 sm:px-4">
             <Link to="/import">
-              <Upload className="h-4 w-4 mr-2" />
-              Import Excel
+              <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 shrink-0" />
+              <span className="truncate">Import</span>
             </Link>
           </Button>
-          <Button asChild>
+          <Button asChild className="flex-1 sm:flex-none text-xs sm:text-sm h-9 sm:h-10 px-2 sm:px-4">
             <Link to="/contracts">
-              <FileText className="h-4 w-4 mr-2" />
-              View Contracts
+              <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 shrink-0" />
+              <span className="truncate">Contracts</span>
             </Link>
           </Button>
         </div>

@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { MONTH_NAMES } from '@/lib/billingPeriodColors';
 import {
     Select,
     SelectContent,
@@ -40,7 +41,7 @@ export default function ArchivedContracts() {
     const { toast } = useToast();
 
     const [search, setSearch] = useState('');
-    const [periodFilter, setPeriodFilter] = useState<BillingPeriod | 'all'>('all');
+    const [monthFilter, setMonthFilter] = useState<string>('all');
     const [sortField, setSortField] = useState<SortField>('customer');
     const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
     const [editingContract, setEditingContract] = useState<Contract | null>(null);
@@ -61,8 +62,17 @@ export default function ArchivedContracts() {
             );
         }
 
-        if (periodFilter !== 'all') {
-            result = result.filter(c => c.billingPeriod === periodFilter);
+        if (monthFilter !== 'all') {
+            result = result.filter(c => {
+                if (!c.terminationDate) return false;
+                // terminationDate is typically empty or '2023-10-15' format
+                const dateParts = c.terminationDate.split('-');
+                if (dateParts.length >= 2) {
+                    const monthIndex = parseInt(dateParts[1], 10) - 1;
+                    return monthIndex.toString() === monthFilter;
+                }
+                return false;
+            });
         }
 
         result.sort((a, b) => {
@@ -91,7 +101,7 @@ export default function ArchivedContracts() {
         });
 
         return result;
-    }, [contracts, search, periodFilter, sortField, sortDirection]);
+    }, [contracts, search, monthFilter, sortField, sortDirection]);
 
     const handleSort = (field: SortField) => {
         if (sortField === field) {
@@ -152,14 +162,14 @@ export default function ArchivedContracts() {
                         />
                     </div>
 
-                    <Select value={periodFilter} onValueChange={(v) => setPeriodFilter(v as any)}>
+                    <Select value={monthFilter} onValueChange={setMonthFilter}>
                         <SelectTrigger className="w-[140px] h-9">
-                            <SelectValue placeholder="Period" />
+                            <SelectValue placeholder="Month" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">All Periods</SelectItem>
-                            {Object.entries(BILLING_PERIOD_LABELS).map(([key, label]) => (
-                                <SelectItem key={key} value={key}>{key}</SelectItem>
+                            <SelectItem value="all">All Months</SelectItem>
+                            {MONTH_NAMES.map((month, index) => (
+                                <SelectItem key={index} value={index.toString()}>{month}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>

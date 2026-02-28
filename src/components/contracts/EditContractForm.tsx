@@ -440,7 +440,7 @@ export function EditContractForm({ contract, onSuccess, onDelete, onDirtyChange 
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="expired">Expired</SelectItem>
-                <SelectItem value="pulled_out">Pulled Out</SelectItem>
+                <SelectItem value="pulled_out">Cancelled</SelectItem>
               </SelectContent>
             </Select>
           </div>

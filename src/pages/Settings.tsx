@@ -29,19 +29,43 @@ import { PeriodSettingsCard } from '@/components/settings/PeriodSettingsCard';
 
 
 export default function Settings() {
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const { contracts, clearAllContracts } = useContracts();
   const { toast } = useToast();
 
   const [companyName, setCompanyName] = useState('Rental Billing Co.');
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [isClearing, setIsClearing] = useState(false);
+  const [showPasswordVerify, setShowPasswordVerify] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const handleVerifyPassword = async () => {
+    if (!user?.email || !passwordInput) return;
+    setIsVerifyingPassword(true);
+    const { success } = await login(user.email, passwordInput);
+    setIsVerifyingPassword(false);
+
+    if (success) {
+      setShowPasswordVerify(false);
+      setPasswordInput('');
+      setShowDeleteConfirm(true);
+    } else {
+      toast({
+        title: 'Verification failed',
+        description: 'Incorrect password. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const handleClearAllData = async () => {
     setIsClearing(true);
     const success = await clearAllContracts();
     setIsClearing(false);
     if (success) {
+      setShowDeleteConfirm(false);
       window.location.reload();
     }
   };
@@ -165,13 +189,44 @@ export default function Settings() {
                 <p className="text-sm text-muted-foreground mt-1">
                   Clearing all data will permanently delete all contracts. This action cannot be undone.
                 </p>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm" className="mt-3">
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Clear All Data
-                    </Button>
-                  </AlertDialogTrigger>
+
+                <Button variant="destructive" size="sm" className="mt-3" onClick={() => setShowPasswordVerify(true)}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear All Data
+                </Button>
+
+                {/* Password Verification Dialog */}
+                <AlertDialog open={showPasswordVerify} onOpenChange={setShowPasswordVerify}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Security Verification</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Please enter your account password to authorize this destructive action.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="py-4">
+                      <Label htmlFor="password">Password</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={passwordInput}
+                        onChange={(e) => setPasswordInput(e.target.value)}
+                        placeholder="Enter your password"
+                        className="mt-2"
+                        onKeyDown={(e) => e.key === 'Enter' && handleVerifyPassword()}
+                      />
+                    </div>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isVerifyingPassword} onClick={() => setPasswordInput('')}>Cancel</AlertDialogCancel>
+                      <Button onClick={handleVerifyPassword} disabled={isVerifyingPassword || !passwordInput}>
+                        {isVerifyingPassword ? 'Verifying...' : 'Verify Password'}
+                      </Button>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                {/* Final Delete Confirmation Dialog */}
+                <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
@@ -206,6 +261,6 @@ export default function Settings() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </div >
   );
 }
