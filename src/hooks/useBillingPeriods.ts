@@ -55,14 +55,20 @@ export function useBillingPeriods() {
     };
   }, [userId, queryClient]);
 
-  // Combine default with custom
+  // Combine default with custom while preserving saved array order
   const allPeriods = useMemo((): BillingPeriodConfig[] => {
-    return [
-      ...DEFAULT_BILLING_PERIODS.filter(
-        (p) => !customPeriods.some((c) => c.code === p.code)
-      ),
-      ...customPeriods,
-    ];
+    if (!customPeriods || customPeriods.length === 0) {
+      return [...DEFAULT_BILLING_PERIODS];
+    }
+
+    const savedPeriods = [...customPeriods];
+
+    // Append any newly released built-in periods that aren't in the DB yet
+    const missingDefaults = DEFAULT_BILLING_PERIODS.filter(
+      (dp) => !savedPeriods.some((sp) => sp.code === dp.code)
+    );
+
+    return [...savedPeriods, ...missingDefaults];
   }, [customPeriods]);
 
   // Mutation to persist updates securely
@@ -133,6 +139,11 @@ export function useBillingPeriods() {
     return !allPeriods.some((p) => p.code.toLowerCase() === code.toLowerCase());
   }, [allPeriods]);
 
+  const reorderPeriods = useCallback((newOrderedPeriods: BillingPeriodConfig[]) => {
+    // Save the entire newly ordered list back to DB
+    mutation.mutate(newOrderedPeriods);
+  }, [mutation]);
+
   return {
     allPeriods,
     customPeriods,
@@ -141,6 +152,7 @@ export function useBillingPeriods() {
     deletePeriod,
     getPeriod,
     isCodeAvailable,
+    reorderPeriods,
     isLoading: isFetching || mutation.isPending,
   };
 }

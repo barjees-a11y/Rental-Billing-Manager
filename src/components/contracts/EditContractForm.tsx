@@ -29,10 +29,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useContracts } from '@/hooks/useContracts';
 import { useToast } from '@/hooks/use-toast';
-import { Contract, BillingPeriod, InvoiceDay, QuarterlyMonths, BILLING_PERIOD_LABELS } from '@/types/contracts';
+import { Contract, BillingPeriod, InvoiceDay, QuarterlyMonths } from '@/types/contracts';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
+import { useBillingPeriods } from '@/hooks/useBillingPeriods';
 
 export interface ChangeRecord {
   field: string;
@@ -137,6 +138,7 @@ const getScheduleLabel = (billingPeriod: BillingPeriod): string => {
 
 export function EditContractForm({ contract, onSuccess, onDelete, onDirtyChange }: EditContractFormProps) {
   const { updateContract, terminateContract } = useContracts();
+  const { allPeriods } = useBillingPeriods();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -465,8 +467,8 @@ export function EditContractForm({ contract, onSuccess, onDelete, onDirtyChange 
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="z-[999]">
-                {Object.entries(BILLING_PERIOD_LABELS).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{key} - {label}</SelectItem>
+                {allPeriods.map((period) => (
+                  <SelectItem key={period.code} value={period.code}>{period.code} - {period.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

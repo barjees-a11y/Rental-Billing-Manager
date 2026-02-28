@@ -262,8 +262,8 @@ export default function Contracts() {
                 </SelectTrigger>
                 <SelectContent className="z-[100]">
                   <SelectItem value="all">All Periods</SelectItem>
-                  {Object.entries(BILLING_PERIOD_LABELS).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{key}</SelectItem>
+                  {allPeriods.map((period) => (
+                    <SelectItem key={period.code} value={period.code}>{period.code}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

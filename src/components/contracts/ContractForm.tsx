@@ -3,8 +3,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useContracts } from '@/hooks/useContracts';
-import { Contract, BillingPeriod, InvoiceDay, QuarterlyMonths, ContractStatus, BILLING_PERIOD_LABELS } from '@/types/contracts';
+import { Contract, BillingPeriod, InvoiceDay, QuarterlyMonths, ContractStatus } from '@/types/contracts';
 import { Button } from '@/components/ui/button';
+import { useBillingPeriods } from '@/hooks/useBillingPeriods';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -47,6 +48,7 @@ interface ContractFormProps {
 
 export function ContractForm({ contract, onSuccess }: ContractFormProps) {
   const { addContract, updateContract } = useContracts();
+  const { allPeriods } = useBillingPeriods();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -191,9 +193,9 @@ export function ContractForm({ contract, onSuccess }: ContractFormProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {Object.entries(BILLING_PERIOD_LABELS).map(([key, label]) => (
-                        <SelectItem key={key} value={key}>
-                          {key} - {label}
+                      {allPeriods.map((period) => (
+                        <SelectItem key={period.code} value={period.code}>
+                          {period.code} - {period.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
