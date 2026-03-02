@@ -1,19 +1,18 @@
 # Project State
 
-## Current Objectives
-- Fix Excel Import 400 Bad Request error.
-- Verify Supabase schema matches frontend expectations.
-- Ensure `user_id` is correctly included in database operations.
+## Current Position
+- **Phase**: 7 — Installation Report (Cancelled Contracts)
+- **Task**: Implementation plan created, awaiting user approval
+- **Status**: Planning
 
 ## Context
-- **Issue**: Excel import fails with 400 error. Screenshot suggests `quarterly_months` or general payload issue.
-- **Hypothesis**:
-    1. `user_id` is missing in `insert`/`upsert` payload, violating `not null` constraint.
-    2. `excess_*` columns might still be missing if migration wasn't run.
-    3. `quarterly_months` might be sending malformed data?
-- **Codebase**: React + Vite + Supabase.
+- **Objective**: Move the standalone "Archived" page into the Reports page as an "Installation Report" subsection.
+- **Key changes**: Remove `/archived` route, remove sidebar nav item, create `InstallationReport` component, create Excel export utility, integrate into Reports page below "Contracts by Billing Period".
+- **Table columns**: SI No, Contract, Customer, Machine/Site, Cancelled On (date)
+- **Filter**: Month-based filter on `terminationDate`
+- **Export**: Excel with same 5 columns
 
-## Active Tasks
-- Investigate `useContracts.ts` for payload structure.
-- Check Authentication context to retrieve `user_id`.
-- Update `useContracts.ts` to include `user_id`.
+## Next Steps
+1. Get user approval on implementation plan
+2. `/execute 7` — implement all changes
+3. `/verify` — build and test

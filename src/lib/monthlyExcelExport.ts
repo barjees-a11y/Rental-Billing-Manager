@@ -24,13 +24,13 @@ export async function exportMonthlyContractsToExcel(
   const dueContracts = getContractsDueInMonth(contracts, month, year);
   const monthName = MONTH_NAMES[month - 1];
 
-  const periodOrder: Record<string, number> = {
-    'MB': 1, '2MBX': 2, 'MBQX': 3, 'MBYX': 4, 'QB': 5, 'QBYX': 6, 'HY': 7, 'YB': 8
-  };
+  // Build period order from settings (drag-and-drop order)
+  const periodOrder: Record<string, number> = {};
+  allPeriods.forEach((p, idx) => { periodOrder[p.code] = idx; });
 
   const sortedContracts = [...dueContracts].sort((a, b) => {
     if (a.invoiceDay !== b.invoiceDay) return a.invoiceDay - b.invoiceDay;
-    const periodDiff = (periodOrder[a.billingPeriod] || 99) - (periodOrder[b.billingPeriod] || 99);
+    const periodDiff = (periodOrder[a.billingPeriod] ?? 99) - (periodOrder[b.billingPeriod] ?? 99);
     if (periodDiff !== 0) return periodDiff;
     const aSchedule = a.quarterlyMonths || '';
     const bSchedule = b.quarterlyMonths || '';
@@ -49,8 +49,8 @@ export async function exportMonthlyContractsToExcel(
 
     if (dayContracts.length > 0) {
       dayContracts.sort((a, b) => {
-        // 1. Primary: Hierarchical Priority by Billing Period (MB -> 2MBX -> MBQX...)
-        const periodDiff = (periodOrder[a.billingPeriod] || 99) - (periodOrder[b.billingPeriod] || 99);
+        // 1. Primary: Hierarchical Priority by Billing Period (from settings order)
+        const periodDiff = (periodOrder[a.billingPeriod] ?? 99) - (periodOrder[b.billingPeriod] ?? 99);
         if (periodDiff !== 0) return periodDiff;
 
         // 2. Secondary: Alphabetical if exact SAME period

@@ -14,7 +14,7 @@ import CustomView from "./pages/CustomView";
 import ImportExcel from "./pages/ImportExcel";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
-import ArchivedContracts from "./pages/ArchivedContracts";
+
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -74,11 +74,7 @@ const App = () => (
               <Contracts />
             </ProtectedRoute>
           } />
-          <Route path="/archived" element={
-            <ProtectedRoute>
-              <ArchivedContracts />
-            </ProtectedRoute>
-          } />
+
           <Route path="/custom-view" element={
             <ProtectedRoute>
               <CustomView />

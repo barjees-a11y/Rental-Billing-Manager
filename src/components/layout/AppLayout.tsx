@@ -14,7 +14,6 @@ import {
   Eye,
   Menu,
   ChevronLeft,
-  Archive,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,7 +33,6 @@ interface AppLayoutProps {
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/contracts', label: 'Contracts', icon: FileText },
-  { path: '/archived', label: 'Archived', icon: Archive },
   { path: '/custom-view', label: 'Custom View', icon: Eye },
   { path: '/import', label: 'Import Excel', icon: Upload },
   { path: '/reports', label: 'Reports', icon: FileSpreadsheet },

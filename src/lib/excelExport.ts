@@ -57,8 +57,18 @@ function createBillingSheet(ws: ExcelJS.Worksheet, contracts: Contract[], allPer
   });
   ws.getRow(1).height = 35;
 
+  // Sort contracts by billing period order from settings
+  const periodOrderMap: Record<string, number> = {};
+  allPeriods.forEach((p, idx) => { periodOrderMap[p.code] = idx; });
+
+  const sortedContracts = [...contracts].sort((a, b) => {
+    const aOrder = periodOrderMap[a.billingPeriod] ?? 999;
+    const bOrder = periodOrderMap[b.billingPeriod] ?? 999;
+    return aOrder - bOrder;
+  });
+
   // Build data rows
-  contracts.forEach((contract, index) => {
+  sortedContracts.forEach((contract, index) => {
     const rowData: any = {
       siNo: index + 1,
       contractNumber: contract.contractNumber,

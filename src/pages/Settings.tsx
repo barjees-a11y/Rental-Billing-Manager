@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/useAuth';
 import { useContracts } from '@/hooks/useContracts';
 import {
@@ -26,20 +25,24 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { PeriodSettingsCard } from '@/components/settings/PeriodSettingsCard';
+import { UserManagementCard } from '@/components/settings/UserManagementCard';
+import { useUserRole } from '@/hooks/useUserRole';
 
 
 export default function Settings() {
-  const { user, login } = useAuth();
+  const { user, login, updateProfile } = useAuth();
   const { contracts, clearAllContracts } = useContracts();
+  const { isSuperAdmin } = useUserRole();
   const { toast } = useToast();
 
+  const [profileName, setProfileName] = useState(user?.name || '');
   const [companyName, setCompanyName] = useState('Rental Billing Co.');
-  const [emailNotifications, setEmailNotifications] = useState(true);
   const [isClearing, setIsClearing] = useState(false);
   const [showPasswordVerify, setShowPasswordVerify] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   const handleVerifyPassword = async () => {
     if (!user?.email || !passwordInput) return;
@@ -67,6 +70,18 @@ export default function Settings() {
     if (success) {
       setShowDeleteConfirm(false);
       window.location.reload();
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!profileName.trim()) return;
+    setIsSavingProfile(true);
+    const { success, error } = await updateProfile(profileName.trim());
+    setIsSavingProfile(false);
+    if (success) {
+      toast({ title: 'Profile updated', description: 'Your display name has been saved.' });
+    } else {
+      toast({ title: 'Update failed', description: error || 'Could not update profile.', variant: 'destructive' });
     }
   };
 
@@ -105,13 +120,20 @@ export default function Settings() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Name</Label>
-              <Input value={user?.name || 'Guest'} disabled />
+              <Input
+                value={profileName}
+                onChange={(e) => setProfileName(e.target.value)}
+                placeholder="Your display name"
+              />
             </div>
             <div className="space-y-2">
               <Label>Email</Label>
               <Input value={user?.email || ''} disabled />
             </div>
           </div>
+          <Button onClick={handleSaveProfile} disabled={isSavingProfile || profileName === user?.name}>
+            {isSavingProfile ? 'Saving...' : 'Save Profile'}
+          </Button>
         </CardContent>
       </Card>
 
@@ -139,18 +161,7 @@ export default function Settings() {
             />
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Email Notifications</Label>
-              <p className="text-sm text-muted-foreground">
-                Receive email alerts for contract due dates
-              </p>
-            </div>
-            <Switch
-              checked={emailNotifications}
-              onCheckedChange={setEmailNotifications}
-            />
-          </div>
+
 
           <Button onClick={handleSaveSettings}>Save Settings</Button>
         </CardContent>
@@ -158,6 +169,9 @@ export default function Settings() {
 
       {/* Period Settings */}
       <PeriodSettingsCard />
+
+      {/* User Management (Super Admin only) */}
+      {isSuperAdmin && <UserManagementCard />}
 
       {/* Data Management */}
       <Card className="glass-panel animate-slide-up [animation-delay:300ms]">
@@ -186,63 +200,71 @@ export default function Settings() {
               <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
               <div className="flex-1">
                 <p className="font-medium text-destructive">Danger Zone</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Clearing all data will permanently delete all contracts. This action cannot be undone.
-                </p>
+                {isSuperAdmin ? (
+                  <>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Clearing all data will permanently delete all contracts. This action cannot be undone.
+                    </p>
 
-                <Button variant="destructive" size="sm" className="mt-3" onClick={() => setShowPasswordVerify(true)}>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Clear All Data
-                </Button>
+                    <Button variant="destructive" size="sm" className="mt-3" onClick={() => setShowPasswordVerify(true)}>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Clear All Data
+                    </Button>
 
-                {/* Password Verification Dialog */}
-                <AlertDialog open={showPasswordVerify} onOpenChange={setShowPasswordVerify}>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Security Verification</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Please enter your account password to authorize this destructive action.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <div className="py-4">
-                      <Label htmlFor="password">Password</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        value={passwordInput}
-                        onChange={(e) => setPasswordInput(e.target.value)}
-                        placeholder="Enter your password"
-                        className="mt-2"
-                        onKeyDown={(e) => e.key === 'Enter' && handleVerifyPassword()}
-                      />
-                    </div>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel disabled={isVerifyingPassword} onClick={() => setPasswordInput('')}>Cancel</AlertDialogCancel>
-                      <Button onClick={handleVerifyPassword} disabled={isVerifyingPassword || !passwordInput}>
-                        {isVerifyingPassword ? 'Verifying...' : 'Verify Password'}
-                      </Button>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                    {/* Password Verification Dialog */}
+                    <AlertDialog open={showPasswordVerify} onOpenChange={setShowPasswordVerify}>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Security Verification</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Please enter your account password to authorize this destructive action.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <div className="py-4">
+                          <Label htmlFor="password">Password</Label>
+                          <Input
+                            id="password"
+                            type="password"
+                            value={passwordInput}
+                            onChange={(e) => setPasswordInput(e.target.value)}
+                            placeholder="Enter your password"
+                            className="mt-2"
+                            onKeyDown={(e) => e.key === 'Enter' && handleVerifyPassword()}
+                          />
+                        </div>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel disabled={isVerifyingPassword} onClick={() => setPasswordInput('')}>Cancel</AlertDialogCancel>
+                          <Button onClick={handleVerifyPassword} disabled={isVerifyingPassword || !passwordInput}>
+                            {isVerifyingPassword ? 'Verifying...' : 'Verify Password'}
+                          </Button>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
 
-                {/* Final Delete Confirmation Dialog */}
-                <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete all {contracts.length} contracts.
-                        This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel disabled={isClearing}>Cancel</AlertDialogCancel>
-                      <AlertDialogAction disabled={isClearing} onClick={handleClearAllData} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        {isClearing ? 'Clearing...' : 'Yes, delete everything'}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                    {/* Final Delete Confirmation Dialog */}
+                    <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete all {contracts.length} contracts.
+                            This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel disabled={isClearing}>Cancel</AlertDialogCancel>
+                          <AlertDialogAction disabled={isClearing} onClick={handleClearAllData} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            {isClearing ? 'Clearing...' : 'Yes, delete everything'}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Only super administrators can clear data.
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -261,6 +283,6 @@ export default function Settings() {
           </div>
         </CardContent>
       </Card>
-    </div >
+    </div>
   );
 }

@@ -58,3 +58,13 @@
 - [ ] Implement infinite color picker for background and font in Settings.
 - [ ] Connect custom period colors directly to Excel generation (`excelExport.ts`).
 - [ ] Link `useBillingPeriods` configs to Dashboard Contracts Table for real-time reactivity without manual refresh.
+
+### Phase 7: Installation Report (Cancelled Contracts)
+**Status**: 🚧 In Progress
+**Objective**: Relocate the standalone "Archived" page into the Reports page as an "Installation Report" subsection, with a simplified table (SI No, Contract, Customer, Machine/Site, Cancelled On), month filter, and Excel export.
+**Key Deliverables**:
+- [ ] Remove `/archived` standalone route and sidebar nav item
+- [ ] Create `InstallationReport` component with simplified 5-column table
+- [ ] Integrate into Reports page below "Contracts by Billing Period"
+- [ ] Add month-based filter for cancelled contracts
+- [ ] Create Excel export utility for the Installation Report

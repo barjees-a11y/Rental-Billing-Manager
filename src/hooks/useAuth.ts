@@ -126,6 +126,24 @@ export function useAuth() {
     }
   }, []);
 
+  const updateProfile = useCallback(async (name: string): Promise<{ success: boolean, error?: string }> => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: { name },
+      });
+      if (error) throw error;
+      // Update local state immediately
+      setAuthState(prev => prev.user ? {
+        ...prev,
+        user: { ...prev.user, name },
+      } : prev);
+      return { success: true };
+    } catch (error: any) {
+      console.error("Update Profile Error:", error);
+      return { success: false, error: error.message };
+    }
+  }, []);
+
   return {
     user: authState.user,
     isAuthenticated: authState.isAuthenticated,
@@ -134,5 +152,6 @@ export function useAuth() {
     logout,
     register,
     resetPassword,
+    updateProfile,
   };
 }

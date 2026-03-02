@@ -23,6 +23,8 @@ import { getContractsDueThisMonth } from '@/lib/invoiceDateLogic';
 import { MONTH_NAMES } from '@/lib/billingPeriodColors';
 import { exportMonthlyContractsToExcel, getAvailableYears, getContractsDueInMonth } from '@/lib/monthlyExcelExport';
 import { exportTopCustomersToExcel } from '@/lib/excelExport';
+import { InstallationReport } from '@/components/reports/InstallationReport';
+import { InstallationReportTable } from '@/components/reports/InstallationReportTable';
 
 export default function Reports() {
   const { contracts, stats: contractStats } = useContracts();
@@ -265,6 +267,12 @@ export default function Reports() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Installation Report — Cancelled Contracts */}
+      <InstallationReport contracts={contracts} />
+
+      {/* Installation Report — Full Contract View */}
+      <InstallationReportTable contracts={contracts} />
 
       {/* Contract Summary */}
       <Card className="glass-card">
