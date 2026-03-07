@@ -129,6 +129,7 @@ export function createIndividualDaySheet(ws: ExcelJS.Worksheet, contracts: Contr
     { header: 'Machine/Site', key: 'machineSite', width: 37 },
     { header: 'Period', key: 'period', width: 12 },
     { header: 'Invoice Day', key: 'invoiceDay', width: 14 },
+    ...QUARTERS.map((q, i) => ({ header: q.label, key: `q${i + 1}`, width: 18 }))
   ];
 
   const totalCols = ws.columns.length;
@@ -136,7 +137,7 @@ export function createIndividualDaySheet(ws: ExcelJS.Worksheet, contracts: Contr
 
   let siNo = 1;
   for (const contract of contracts) {
-    const rowData = {
+    const rowData: any = {
       siNo: siNo++,
       contractNumber: contract.contractNumber,
       customer: contract.customer,
@@ -144,11 +145,14 @@ export function createIndividualDaySheet(ws: ExcelJS.Worksheet, contracts: Contr
       period: contract.billingPeriod,
       invoiceDay: contract.invoiceDay
     };
+    QUARTERS.forEach((q, i) => {
+      rowData[`q${i + 1}`] = getQuarterDisplayMonth(contract.billingPeriod, contract.quarterlyMonths, q);
+    });
     const row = ws.addRow(rowData);
     applyDataRowStyling(row, totalCols, contract, allPeriods);
   }
 
-  ws.autoFilter = 'A1:F1';
+  ws.autoFilter = 'A1:J1';
 }
 
 function applyHeaderStyling(row: ExcelJS.Row, totalCols: number): void {
