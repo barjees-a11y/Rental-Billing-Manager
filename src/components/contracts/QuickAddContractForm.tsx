@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Check, ChevronsUpDown } from 'lucide-react';
+import { Plus, Check, ChevronsUpDown, CalendarIcon } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -25,11 +25,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 import { useContracts } from '@/hooks/useContracts';
 import { useToast } from '@/hooks/use-toast';
 import { BillingPeriod, InvoiceDay, QuarterlyMonths, BILLING_PERIOD_LABELS } from '@/types/contracts';
-import { format } from 'date-fns';
+import { format, parse, isValid } from 'date-fns';
 
 export function QuickAddContractForm({ onSuccess }: { onSuccess?: () => void }) {
   const [formData, setFormData] = useState({
@@ -45,6 +46,7 @@ export function QuickAddContractForm({ onSuccess }: { onSuccess?: () => void }) 
   const [useExistingCustomer, setUseExistingCustomer] = useState(false);
   const [openCustomerDropdown, setOpenCustomerDropdown] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
+  const [openDatePicker, setOpenDatePicker] = useState(false);
 
   const { contracts, addContract } = useContracts();
   const { toast } = useToast();
@@ -100,6 +102,7 @@ export function QuickAddContractForm({ onSuccess }: { onSuccess?: () => void }) 
       quarterlyMonths: undefined,
       startDate: format(new Date(), 'yyyy-MM-dd'),
     });
+    setOpenDatePicker(false);
     onSuccess?.();
   };
 
@@ -387,13 +390,34 @@ export function QuickAddContractForm({ onSuccess }: { onSuccess?: () => void }) 
           </Select>
         </div>
         <div>
-          <Label htmlFor="startDate" className="text-xs mb-1 block">Start Date</Label>
-          <Input
-            id="startDate"
-            type="date"
-            value={formData.startDate}
-            onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-          />
+          <Label className="text-xs mb-1 block">Start Date</Label>
+          <Popover open={openDatePicker} onOpenChange={setOpenDatePicker}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className={cn('w-full justify-start text-left font-normal h-10', !formData.startDate && 'text-muted-foreground')}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {formData.startDate
+                  ? format(parse(formData.startDate, 'yyyy-MM-dd', new Date()), 'dd MMM yyyy')
+                  : 'Pick a date'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 z-[10001]" align="start">
+              <Calendar
+                mode="single"
+                selected={formData.startDate ? parse(formData.startDate, 'yyyy-MM-dd', new Date()) : undefined}
+                onSelect={(date) => {
+                  if (date && isValid(date)) {
+                    setFormData(prev => ({ ...prev, startDate: format(date, 'yyyy-MM-dd') }));
+                  }
+                  setOpenDatePicker(false);
+                }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 

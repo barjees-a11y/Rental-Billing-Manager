@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,7 @@ import {
 import { PeriodSettingsCard } from '@/components/settings/PeriodSettingsCard';
 import { UserManagementCard } from '@/components/settings/UserManagementCard';
 import { useUserRole } from '@/hooks/useUserRole';
+import { supabase } from '@/lib/supabase';
 
 
 export default function Settings() {
@@ -36,8 +37,32 @@ export default function Settings() {
   const { toast } = useToast();
 
   const [profileName, setProfileName] = useState(user?.name || '');
-  const [companyName, setCompanyName] = useState('Rental Billing Co.');
+  const [savedProfileName, setSavedProfileName] = useState(user?.name || '');
+
+  // Sync profile name once auth session resolves (user starts as null on page load)
+  useEffect(() => {
+    if (user?.name) {
+      setProfileName(user.name);
+      setSavedProfileName(user.name);
+    }
+  }, [user?.name]);
+  const [companyName, setCompanyName] = useState('');
+  const [isSavingCompany, setIsSavingCompany] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+
+  // Load company name from Supabase on mount
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase
+      .from('user_settings')
+      .select('company_name')
+      .eq('user_id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.company_name) setCompanyName(data.company_name);
+        else setCompanyName('Rental Billing Co.');
+      });
+  }, [user?.id]);
   const [showPasswordVerify, setShowPasswordVerify] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
@@ -79,17 +104,25 @@ export default function Settings() {
     const { success, error } = await updateProfile(profileName.trim());
     setIsSavingProfile(false);
     if (success) {
+      setSavedProfileName(profileName.trim());
       toast({ title: 'Profile updated', description: 'Your display name has been saved.' });
     } else {
       toast({ title: 'Update failed', description: error || 'Could not update profile.', variant: 'destructive' });
     }
   };
 
-  const handleSaveSettings = () => {
-    toast({
-      title: 'Settings saved',
-      description: 'Your preferences have been updated.',
-    });
+  const handleSaveSettings = async () => {
+    if (!user?.id || !companyName.trim()) return;
+    setIsSavingCompany(true);
+    const { error } = await supabase
+      .from('user_settings')
+      .upsert({ user_id: user.id, company_name: companyName.trim(), updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    setIsSavingCompany(false);
+    if (error) {
+      toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Settings saved', description: 'Company name has been updated.' });
+    }
   };
 
   return (
@@ -131,7 +164,7 @@ export default function Settings() {
               <Input value={user?.email || ''} disabled />
             </div>
           </div>
-          <Button onClick={handleSaveProfile} disabled={isSavingProfile || profileName === user?.name}>
+          <Button onClick={handleSaveProfile} disabled={isSavingProfile || !profileName.trim() || profileName.trim() === savedProfileName}>
             {isSavingProfile ? 'Saving...' : 'Save Profile'}
           </Button>
         </CardContent>
@@ -163,7 +196,9 @@ export default function Settings() {
 
 
 
-          <Button onClick={handleSaveSettings}>Save Settings</Button>
+          <Button onClick={handleSaveSettings} disabled={isSavingCompany}>
+            {isSavingCompany ? 'Saving...' : 'Save Settings'}
+          </Button>
         </CardContent>
       </Card>
 

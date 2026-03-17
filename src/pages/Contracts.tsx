@@ -148,14 +148,19 @@ export default function Contracts() {
   }, [sortField]);
 
   const handleDelete = useCallback((contract: Contract) => {
-    if (confirm(`Delete contract ${contract.contractNumber} for ${contract.customer}?`)) {
-      deleteContract(contract.id);
+    if (confirm(`Cancel contract ${contract.contractNumber} for ${contract.customer}? It will be moved to Cancelled Contracts.`)) {
+      const today = new Date().toISOString().split('T')[0];
+      updateContract(contract.id, {
+        status: 'pulled_out',
+        terminationDate: today,
+        terminationReason: 'Cancelled',
+      });
       toast({
-        title: 'Contract deleted',
-        description: `Contract ${contract.contractNumber} has been removed.`,
+        title: 'Contract cancelled',
+        description: `Contract ${contract.contractNumber} has been moved to Cancelled Contracts.`,
       });
     }
-  }, [deleteContract, toast]);
+  }, [updateContract, toast]);
 
   const handleUpdateField = useCallback((contractId: string, field: keyof Contract, value: any) => {
     updateContract(contractId, { [field]: value });
