@@ -10,6 +10,7 @@ async function pingSupabase(env: Env): Promise<void> {
 		headers: {
 			apikey: env.SUPABASE_ANON_KEY,
 			Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+			'X-Client-Info': 'sahara-cf-cron-keepalive',
 		},
 	});
 

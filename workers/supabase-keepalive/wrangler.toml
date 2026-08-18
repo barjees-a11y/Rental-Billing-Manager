@@ -3,6 +3,13 @@ main = "src/index.ts"
 compatibility_date = "2026-08-01"
 workers_dev = false
 
-# Every 3 days — comfortably inside Supabase's 7-day inactivity auto-pause window.
+# Daily — a wide safety margin inside Supabase's 7-day inactivity auto-pause window.
+# Verified firing live on 2026-08-18 via `wrangler tail` (two consecutive on-schedule
+# invocations). Note: an in-place `wrangler deploy` schedule UPDATE can leave a stuck
+# trigger registration on this account that silently never fires — confirmed by 19+
+# minutes of zero invocations after updating an existing schedule, resolved only by
+# `wrangler delete` + a fresh `wrangler deploy`. If this schedule is ever changed again,
+# delete and redeploy the Worker rather than relying on an in-place update, and verify
+# with `wrangler tail` before trusting it.
 [triggers]
-crons = ["0 0 */3 * *"]
+crons = ["0 0 * * *"]
