@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useEffect } from 'react';
+import { useCallback, useMemo, useEffect, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Contract, ContractStatus, BillingPeriod } from '@/types/contracts';
@@ -10,6 +10,7 @@ export function useContracts() {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const instanceId = useId();
 
   // Helper to validate UUID
   const isValidUUID = (uuid: string) => {
@@ -124,7 +125,10 @@ export function useContracts() {
     if (!userId) return;
 
     const channel = supabase
-      .channel('contracts_changes')
+      // Channel name includes instanceId: this hook mounts in multiple components at once
+      // (page + child forms/tables), and supabase-js reuses the channel object for a
+      // duplicate topic name, which throws when a second `.on()` is called post-subscribe.
+      .channel(`contracts_changes_${instanceId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'contracts', filter: `user_id=eq.${userId}` },
@@ -137,7 +141,7 @@ export function useContracts() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, queryClient]);
+  }, [userId, queryClient, instanceId]);
 
   // Mutations
   const addMutation = useMutation({

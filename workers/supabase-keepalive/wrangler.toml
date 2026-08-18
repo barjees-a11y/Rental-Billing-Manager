@@ -1,0 +1,8 @@
+name = "supabase-keepalive"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+workers_dev = false
+
+# Every 3 days — comfortably inside Supabase's 7-day inactivity auto-pause window.
+[triggers]
+crons = ["0 0 */3 * *"]

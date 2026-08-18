@@ -16,11 +16,12 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load environment variables from .env.local
+// Load environment variables from .env.local (does not override already-set env vars, e.g. in CI)
 config({ path: join(__dirname, '..', '.env.local') });
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+// Accept both the Vite-prefixed names (local dev) and plain names (CI secrets)
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     console.error('❌ Error: Missing Supabase configuration in .env.local');
@@ -35,14 +36,15 @@ async function pingSupabase() {
     console.log(`[${timestamp}] 🏓 Pinging Supabase project: ${projectRef}`);
     
     return new Promise((resolve, reject) => {
-        // Make a lightweight request to the Supabase REST API
-        // Using the root endpoint which doesn't consume database resources
+        // Query a real table (publicly readable "contracts") so this actually hits
+        // Postgres and counts as activity for Supabase's inactivity/auto-pause timer.
+        // Hitting the bare /rest/v1/ root does NOT reset that timer.
         const url = new URL(SUPABASE_URL);
-        
+
         const options = {
             hostname: url.hostname,
             port: 443,
-            path: '/rest/v1/',
+            path: '/rest/v1/contracts?select=id&limit=1',
             method: 'GET',
             headers: {
                 'apikey': SUPABASE_ANON_KEY,

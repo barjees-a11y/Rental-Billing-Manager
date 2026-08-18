@@ -1,5 +1,6 @@
 # Supabase Keep-Alive GitHub Actions Workflow
-# This workflow pings your Supabase project every 6 hours to prevent deep sleep
+# This workflow queries a real table in your Supabase project every 6 hours
+# to prevent it from auto-pausing after 7 days of inactivity.
 
 name: Supabase Keep-Alive
 

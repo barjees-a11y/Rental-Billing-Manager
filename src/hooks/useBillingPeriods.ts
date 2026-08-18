@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useId, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,6 +8,7 @@ export function useBillingPeriods() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const userId = user?.id || '';
+  const instanceId = useId();
 
   // Fetch settings from Supabase
   const { data: customPeriods = [], isLoading: isFetching } = useQuery({
@@ -34,7 +35,10 @@ export function useBillingPeriods() {
     if (!userId) return;
 
     const channel = supabase
-      .channel('user_settings_changes')
+      // Channel name includes instanceId: this hook mounts in multiple components at once
+      // (page + child forms/tables), and supabase-js reuses the channel object for a
+      // duplicate topic name, which throws when a second `.on()` is called post-subscribe.
+      .channel(`user_settings_changes_${instanceId}`)
       .on(
         'postgres_changes',
         {
@@ -53,7 +57,7 @@ export function useBillingPeriods() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, queryClient]);
+  }, [userId, queryClient, instanceId]);
 
   // Combine default with custom while preserving saved array order
   const allPeriods = useMemo((): BillingPeriodConfig[] => {
