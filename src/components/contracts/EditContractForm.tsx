@@ -76,6 +76,7 @@ const getScheduleOptions = (billingPeriod: BillingPeriod): { value: string; labe
         { value: 'DEC', label: 'DEC (December)' },
       ];
     case 'HY':
+    case 'MBHX':
       return [
         { value: 'JAN-JUL', label: 'JAN & JUL' },
         { value: 'FEB-AUG', label: 'FEB & AUG' },
@@ -106,6 +107,7 @@ const getDefaultSchedule = (period: BillingPeriod): QuarterlyMonths | undefined 
     case 'MBYX':
       return 'JAN';
     case 'HY':
+    case 'MBHX':
       return 'JAN-JUL';
     case '2MBX':
       return 'JAN-MAR-MAY-JUL-SEP-NOV';
@@ -122,9 +124,9 @@ const getScheduleLabel = (billingPeriod: BillingPeriod): string => {
     case 'QBYX':
       return 'Quarterly Schedule';
     case 'YB':
-    case 'MBYX':
       return 'Yearly Month';
     case 'HY':
+    case 'MBHX':
       return 'Half-Yearly Cycle';
     case '2MBX':
       return 'Bi-Monthly Cycle';

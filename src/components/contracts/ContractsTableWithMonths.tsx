@@ -66,6 +66,7 @@ const getScheduleOptions = (billingPeriod: BillingPeriod): { value: string; labe
         { value: 'DEC', label: 'DEC' },
       ];
     case 'HY':
+    case 'MBHX':
       return [
         { value: 'JAN-JUL', label: 'JAN & JUL' },
         { value: 'FEB-AUG', label: 'FEB & AUG' },

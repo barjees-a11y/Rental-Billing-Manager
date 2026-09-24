@@ -29,7 +29,7 @@ const contractSchema = z.object({
   contractNumber: z.string().min(1, 'Contract number is required'),
   customer: z.string().min(1, 'Customer name is required'),
   machineSite: z.string().min(1, 'Machine/Site is required'),
-  billingPeriod: z.enum(['MB', 'QB', 'MBQX', 'QBYX', 'YB', 'HY', '2MBX', 'MBYX']),
+  billingPeriod: z.enum(['MB', 'QB', 'MBQX', 'QBYX', 'YB', 'HY', '2MBX', 'MBYX', 'MBHX']),
   invoiceDay: z.coerce.number().refine((v) => [5, 15, 25].includes(v), 'Must be 5, 15, or 25'),
   quarterlyMonths: z.string().optional(),
   startDate: z.string().min(1, 'Start date is required'),
@@ -71,6 +71,7 @@ export function ContractForm({ contract, onSuccess }: ContractFormProps) {
 
   const billingPeriod = form.watch('billingPeriod');
   const showQuarterlyMonths = ['QB', 'MBQX', 'QBYX'].includes(billingPeriod);
+  const showHalfYearlySchedule = ['HY', 'MBHX'].includes(billingPeriod);
 
   const onSubmit = async (data: ContractFormData) => {
     setIsSubmitting(true);
@@ -246,6 +247,34 @@ export function ContractForm({ contract, onSuccess }: ContractFormProps) {
                       <SelectItem value="JAN-APR-JUL-OCT">JAN - APR - JUL - OCT</SelectItem>
                       <SelectItem value="FEB-MAY-AUG-NOV">FEB - MAY - AUG - NOV</SelectItem>
                       <SelectItem value="MAR-JUN-SEP-DEC">MAR - JUN - SEP - DEC</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
+          {showHalfYearlySchedule && (
+            <FormField
+              control={form.control}
+              name="quarterlyMonths"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Half-Yearly Cycle</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value || 'JAN-JUL'}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select cycle" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="JAN-JUL">JAN & JUL</SelectItem>
+                      <SelectItem value="FEB-AUG">FEB & AUG</SelectItem>
+                      <SelectItem value="MAR-SEP">MAR & SEP</SelectItem>
+                      <SelectItem value="APR-OCT">APR & OCT</SelectItem>
+                      <SelectItem value="MAY-NOV">MAY & NOV</SelectItem>
+                      <SelectItem value="JUN-DEC">JUN & DEC</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

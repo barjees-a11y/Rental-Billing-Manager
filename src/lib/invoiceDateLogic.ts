@@ -85,6 +85,7 @@ function getBillingMonths(billingPeriod: BillingPeriod, quarterlyMonths?: Quarte
       return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]; // Every month
 
     case 'MBYX':
+    case 'MBHX':
     case 'MBQX':
       return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]; // Every month (monthly component)
 

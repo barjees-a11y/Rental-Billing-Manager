@@ -149,7 +149,7 @@ export default function ImportExcel() {
         let billingPeriodRaw = String(row[periodCol] ?? '').trim().toUpperCase();
         let billingPeriod = billingPeriodRaw;
 
-        const validPeriods = ['MB', 'QB', 'MBQX', 'QBYX', 'YB', 'HY', '2MBX', 'MBYX'];
+        const validPeriods = ['MB', 'QB', 'MBQX', 'QBYX', 'YB', 'HY', '2MBX', 'MBYX', 'MBHX'];
         if (!validPeriods.includes(billingPeriod)) {
           if (billingPeriod) {
             errors.push(`Unknown period "${billingPeriodRaw}", defaulting to MB`);

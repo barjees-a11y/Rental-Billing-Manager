@@ -67,6 +67,13 @@ export const BILLING_PERIOD_COLORS: Record<BillingPeriod, {
     excelText: '000000',
     name: 'Monthly + Yearly'
   },
+  'MBHX': {
+    bg: 'bg-indigo-500/20',
+    text: 'text-indigo-600 dark:text-indigo-400',
+    excelBg: '4472C4',
+    excelText: 'FFFFFF',
+    name: 'Monthly + Half-Yearly Excess'
+  },
 };
 
 /**
@@ -90,6 +97,19 @@ export function getMonthMarker(
   // Half-yearly - Jan and Jul
   if (billingPeriod === 'HY') {
     return (month === 1 || month === 7) ? 'X' : '';
+  }
+
+  // Monthly billing with half-yearly excess months
+  if (billingPeriod === 'MBHX') {
+    const halfYearlyMap: Record<string, number[]> = {
+      'JAN-JUL': [1, 7],
+      'FEB-AUG': [2, 8],
+      'MAR-SEP': [3, 9],
+      'APR-OCT': [4, 10],
+      'MAY-NOV': [5, 11],
+      'JUN-DEC': [6, 12],
+    };
+    return (halfYearlyMap[quarterlyMonths || 'JAN-JUL'] || [1, 7]).includes(month) ? 'X' : '';
   }
 
   // Yearly - Jan only
@@ -206,6 +226,7 @@ export function getQuarterDisplayMonth(
   const getDefaultSchedule = (period: BillingPeriod): string | undefined => {
     switch (period) {
       case 'HY': return 'JAN-JUL';
+      case 'MBHX': return 'JAN-JUL';
       case 'YB': 
       case 'MBYX': return 'JAN';
       case 'QB':
@@ -258,6 +279,15 @@ export function getQuarterDisplayMonth(
       return numberToMonthName[selectedMonth] || '';
     }
     return '';
+  }
+
+  // MBHX: Show the selected half-yearly excess months in their quarters
+  if (billingPeriod === 'MBHX') {
+    const billingMonths = halfYearlyMap[effectiveSchedule || 'JAN-JUL'] || [1, 7];
+    return quarter.months
+      .filter(month => billingMonths.includes(month))
+      .map(month => numberToMonthName[month])
+      .join(' ');
   }
 
   // Half-Yearly: Show months based on selected cycle

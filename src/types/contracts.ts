@@ -1,5 +1,5 @@
 // Billing period types as per PDR
-export type BillingPeriod = 'MB' | 'QB' | 'MBQX' | 'QBYX' | 'YB' | 'HY' | '2MBX' | 'MBYX';
+export type BillingPeriod = 'MB' | 'QB' | 'MBQX' | 'QBYX' | 'YB' | 'HY' | '2MBX' | 'MBYX' | 'MBHX';
 
 // Invoice day options
 export type InvoiceDay = 5 | 15 | 25;
@@ -66,6 +66,7 @@ export const BILLING_PERIOD_LABELS: Record<BillingPeriod, string> = {
   'HY': 'Half-Yearly',
   '2MBX': 'Bi-Monthly + Extra',
   'MBYX': 'Monthly + Yearly',
+  'MBHX': 'Monthly + Half-Yearly Excess',
 };
 
 // Status colors for badges
@@ -161,6 +162,13 @@ export const DEFAULT_BILLING_PERIODS: BillingPeriodConfig[] = [
     label: 'Monthly + Yearly',
     color: { bg: 'bg-amber-500/20', text: 'text-amber-600 dark:text-amber-400', excelBg: 'FFC000', excelText: '000000' },
     billingLogic: { monthly: true, quarterly: false, halfYearly: false, yearly: true, biMonthly: false },
+    isBuiltIn: true,
+  },
+  {
+    code: 'MBHX',
+    label: 'Monthly + Half-Yearly Excess',
+    color: { bg: 'bg-indigo-500/20', text: 'text-indigo-600 dark:text-indigo-400', excelBg: '4472C4', excelText: 'FFFFFF' },
+    billingLogic: { monthly: true, quarterly: false, halfYearly: true, yearly: false, biMonthly: false },
     isBuiltIn: true,
   },
 ];

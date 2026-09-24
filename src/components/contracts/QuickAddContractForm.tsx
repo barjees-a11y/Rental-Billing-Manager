@@ -119,6 +119,7 @@ export function QuickAddContractForm({ onSuccess }: { onSuccess?: () => void }) 
       case 'YB':
         return 'Yearly Month';
       case 'HY':
+      case 'MBHX':
         return 'Half-Yearly Cycle';
       case '2MBX':
         return 'Bi-Monthly Cycle';
@@ -161,6 +162,7 @@ export function QuickAddContractForm({ onSuccess }: { onSuccess?: () => void }) 
 
       // Half-Yearly: Six cycle options
       case 'HY':
+      case 'MBHX':
         return [
           { value: 'JAN-JUL', label: 'JAN & JUL' },
           { value: 'FEB-AUG', label: 'FEB & AUG' },
@@ -212,6 +214,7 @@ export function QuickAddContractForm({ onSuccess }: { onSuccess?: () => void }) 
       case 'MBYX':
         return 'JAN';
       case 'HY':
+      case 'MBHX':
         return 'JAN-JUL';
       case '2MBX':
         return 'JAN-MAR-MAY-JUL-SEP-NOV';
