@@ -12,7 +12,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "ping": "node scripts/ping-supabase.js",
-    "ping:verbose": "node scripts/ping-supabase.js --verbose"
+    "ping:verbose": "node scripts/ping-supabase.js --verbose",
+    "smoke": "node scripts/smoke-api.mjs",
+    "test:ui": "playwright test"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -77,6 +79,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/typography": "^0.5.16",
     "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.0.0",

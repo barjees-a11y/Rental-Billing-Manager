@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import XLSX from 'xlsx-js-style';
+import { loadXLSX } from '@/lib/excelLazy';
 import { useContracts } from '@/hooks/useContracts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,10 @@ interface ParsedContract {
   contractNumber: string;
   customer: string;
   machineSite: string;
+  brand?: string;
+  model?: string;
+  serialNumber?: string;
+  notes?: string;
   billingPeriod: BillingPeriod;
   invoiceDay: InvoiceDay;
   quarterlyMonths?: QuarterlyMonths;
@@ -51,6 +55,7 @@ export default function ImportExcel() {
 
     try {
       const arrayBuffer = await file.arrayBuffer();
+      const XLSX = await loadXLSX();
       const workbook = XLSX.read(arrayBuffer, { type: 'array' });
 
       // Use first sheet
@@ -105,6 +110,12 @@ export default function ImportExcel() {
       let q2Col = findColIndex(['apr', 'q2', 'may', 'jun', 'june']);
       let q3Col = findColIndex(['jul', 'q3', 'aug', 'sep']);
       let q4Col = findColIndex(['oct', 'q4', 'nov', 'dec']);
+
+      // Optional device columns (only present in newer files — legacy files stay untouched)
+      const brandCol = findColIndex(['brand']);
+      const modelCol = findColIndex(['model']);
+      const serialCol = findColIndex(['serial', 's/n']);
+      const notesCol = findColIndex(['notes', 'remarks']);
 
       console.log('Column mapping:', { contractCol, customerCol, periodCol, dayCol, feeCol, q1Col, q2Col, q3Col, q4Col });
 
@@ -202,6 +213,13 @@ export default function ImportExcel() {
           if (isNaN(rentalFee)) rentalFee = 0;
         }
 
+        // Optional device columns (empty for legacy files)
+        const readCell = (col: number) => (col !== -1 ? String(row[col] ?? '').trim() : '');
+        const brand = readCell(brandCol);
+        const model = readCell(modelCol);
+        const serialNumber = readCell(serialCol);
+        const notes = readCell(notesCol);
+
         // Validation - only add if we have meaningful data
         if (!contractNumber && !customer) continue; // Skip truly empty rows
 
@@ -214,6 +232,10 @@ export default function ImportExcel() {
           contractNumber: contractNumber || `ROW-${i}`,
           customer: customer || customerMachine || 'Unknown Customer',
           machineSite: machineSite || customerMachine || 'N/A',
+          brand: brand || undefined,
+          model: model || undefined,
+          serialNumber: serialNumber || undefined,
+          notes: notes || undefined,
           billingPeriod: billingPeriod as BillingPeriod,
           invoiceDay: invoiceDay as InvoiceDay,
           quarterlyMonths,
@@ -284,6 +306,12 @@ export default function ImportExcel() {
         contractNumber: p.contractNumber,
         customer: p.customer,
         machineSite: p.machineSite,
+        // Imported spreadsheets are copier contracts; the Other Contracts list is maintained in-app.
+        category: 'copier' as const,
+        brand: p.brand,
+        model: p.model,
+        serialNumber: p.serialNumber,
+        notes: p.notes,
         billingPeriod: p.billingPeriod,
         invoiceDay: p.invoiceDay,
         quarterlyMonths: p.quarterlyMonths,

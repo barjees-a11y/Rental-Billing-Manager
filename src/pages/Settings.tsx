@@ -25,6 +25,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { PeriodSettingsCard } from '@/components/settings/PeriodSettingsCard';
+import { DeviceCatalogCard } from '@/components/settings/DeviceCatalogCard';
 import { UserManagementCard } from '@/components/settings/UserManagementCard';
 import { useUserRole } from '@/hooks/useUserRole';
 import { supabase } from '@/lib/supabase';
@@ -204,6 +205,9 @@ export default function Settings() {
 
       {/* Period Settings */}
       <PeriodSettingsCard />
+
+      {/* Device Catalog (brands / device types -> models) */}
+      <DeviceCatalogCard />
 
       {/* User Management (Super Admin only) */}
       {isSuperAdmin && <UserManagementCard />}

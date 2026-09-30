@@ -21,12 +21,40 @@ export type QuarterlyMonths =
 // Contract status
 export type ContractStatus = 'active' | 'expired' | 'pulled_out' | 'pending' | 'suspended' | 'archived';
 
+// Contract category — 'copier' keeps legacy behaviour, 'other' is the new device billing group
+export type ContractCategory = 'copier' | 'other';
+
+// Labels for the category tabs / dashboard cards
+export const CONTRACT_CATEGORY_LABELS: Record<ContractCategory, string> = {
+  'copier': 'Copier',
+  'other': 'Other',
+};
+
+// Device catalog types (global / shared catalog managed by super admins)
+export interface DeviceBrand {
+  id: string;
+  category: ContractCategory;
+  name: string;
+  createdAt?: string;
+}
+
+export interface DeviceModel {
+  id: string;
+  brandId: string;
+  name: string;
+  createdAt?: string;
+}
+
 export interface Contract {
   id: string;
   siNo?: number;  // Persistent SI No from import or sequential assignment
   contractNumber: string;
   customer: string;
   machineSite: string;
+  category?: ContractCategory;  // undefined === 'copier' (legacy rows)
+  brand?: string;               // copier brand, or device type name for 'other'
+  model?: string;
+  serialNumber?: string;
   billingPeriod: BillingPeriod;
   invoiceDay: InvoiceDay;
   quarterlyMonths?: QuarterlyMonths;
@@ -54,6 +82,15 @@ export interface User {
   name: string;
   password?: string;
   createdAt: string;
+}
+
+/**
+ * Normalizes a contract's category.
+ * Legacy rows (and legacy Excel imports) have no category assigned -> 'copier',
+ * which keeps 100% of the existing behaviour for pre-existing data.
+ */
+export function getContractCategory(contract: Pick<Contract, 'category'>): ContractCategory {
+  return contract.category === 'other' ? 'other' : 'copier';
 }
 
 // Billing period descriptions for UI

@@ -1,11 +1,13 @@
-import XLSX from 'xlsx-js-style';
 import { Contract } from '@/types/contracts';
+import { loadXLSX } from '@/lib/excelLazy';
+
+// xlsx-js-style is loaded on demand so it stays out of the initial bundle.
 
 /**
  * Export ALL contracts to Excel
  * Sorted by creation date (Oldest first) as per user request: "companies according their joining"
  */
-export function exportAllContractsToExcel(contracts: Contract[]) {
+export async function exportAllContractsToExcel(contracts: Contract[]) {
     // 1. Sort by createdAt (ASC) = Oldest first
     const sortedContracts = [...contracts].sort((a, b) => {
         return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
@@ -17,6 +19,10 @@ export function exportAllContractsToExcel(contracts: Contract[]) {
         'Contract #': c.contractNumber,
         'Customer': c.customer,
         'Machine / Site': c.machineSite,
+        'Brand': c.brand || '',
+        'Model': c.model || '',
+        'Serial No': c.serialNumber || '',
+        'Notes': c.notes || '',
         'Billing Period': c.billingPeriod,
         'Invoice Day': c.invoiceDay,
         'Start Date': c.startDate,
@@ -26,6 +32,7 @@ export function exportAllContractsToExcel(contracts: Contract[]) {
     }));
 
     // 3. Create Sheet
+    const XLSX = await loadXLSX();
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(data);
 
@@ -47,6 +54,10 @@ export function exportAllContractsToExcel(contracts: Contract[]) {
         { wch: 15 }, // Contract #
         { wch: 30 }, // Customer
         { wch: 25 }, // Machine
+        { wch: 14 }, // Brand
+        { wch: 16 }, // Model
+        { wch: 16 }, // Serial No
+        { wch: 28 }, // Notes
         { wch: 10 }, // Period
         { wch: 10 }, // Day
         { wch: 12 }, // Start Date

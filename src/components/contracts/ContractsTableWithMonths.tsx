@@ -99,6 +99,10 @@ const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
   q2: 100,
   q3: 100,
   q4: 100,
+  brand: 110,
+  model: 120,
+  serialNumber: 130,
+  notes: 180,
   actions: 70,
 };
 
@@ -352,6 +356,46 @@ export const ContractsTableWithMonths = React.memo(function ContractsTableWithMo
                   {quarter.label}
                 </ResizableHeader>
               ))}
+              <ResizableHeader
+                field="brand"
+                width={columnWidths.brand}
+                hasManualWidth={hasManualWidth.brand || false}
+                onResize={handleResize}
+                className="text-[#c9a227] font-bold whitespace-nowrap border-r border-[#2d4a6f] bg-[#1e3a5f]"
+                sortable={false}
+              >
+                Brand
+              </ResizableHeader>
+              <ResizableHeader
+                field="model"
+                width={columnWidths.model}
+                hasManualWidth={hasManualWidth.model || false}
+                onResize={handleResize}
+                className="text-[#c9a227] font-bold whitespace-nowrap border-r border-[#2d4a6f] bg-[#1e3a5f]"
+                sortable={false}
+              >
+                Model
+              </ResizableHeader>
+              <ResizableHeader
+                field="serialNumber"
+                width={columnWidths.serialNumber}
+                hasManualWidth={hasManualWidth.serialNumber || false}
+                onResize={handleResize}
+                className="text-[#c9a227] font-bold whitespace-nowrap border-r border-[#2d4a6f] bg-[#1e3a5f]"
+                sortable={false}
+              >
+                Serial No
+              </ResizableHeader>
+              <ResizableHeader
+                field="notes"
+                width={columnWidths.notes}
+                hasManualWidth={hasManualWidth.notes || false}
+                onResize={handleResize}
+                className="text-[#c9a227] font-bold whitespace-nowrap bg-[#1e3a5f]"
+                sortable={false}
+              >
+                Notes
+              </ResizableHeader>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -462,6 +506,35 @@ export const ContractsTableWithMonths = React.memo(function ContractsTableWithMo
                       </TableCell>
                     );
                   })}
+                  <TableCell
+                    className="border-r border-border/20"
+                    style={getCellStyle('brand', customExcelText)}
+                  >
+                    <span className="text-sm">{contract.brand || '-'}</span>
+                  </TableCell>
+                  <TableCell
+                    className="border-r border-border/20"
+                    style={getCellStyle('model', customExcelText)}
+                  >
+                    <span className="text-sm">{contract.model || '-'}</span>
+                  </TableCell>
+                  <TableCell
+                    className="border-r border-border/20"
+                    style={getCellStyle('serialNumber', customExcelText)}
+                  >
+                    <EditableCell
+                      value={contract.serialNumber || ''}
+                      onSave={(v) => onUpdateField(contract.id, 'serialNumber', v)}
+                    />
+                  </TableCell>
+                  <TableCell
+                    style={getCellStyle('notes', customExcelText)}
+                  >
+                    <EditableCell
+                      value={contract.notes || ''}
+                      onSave={(v) => onUpdateField(contract.id, 'notes', v)}
+                    />
+                  </TableCell>
                 </TableRow>
               );
             })}

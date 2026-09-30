@@ -1,7 +1,10 @@
-import ExcelJS from 'exceljs';
+import type ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { Contract, BillingPeriodConfig } from '@/types/contracts';
 import { getQuarterDisplayMonth, QuarterDefinition } from '@/lib/billingPeriodColors';
+import { loadExcelJS } from '@/lib/excelLazy';
+
+// exceljs is loaded on demand so it stays out of the initial bundle.
 
 // Quarter definitions matching the dashboard (standardized 3-letter format)
 const QUARTERS = [
@@ -15,6 +18,7 @@ const QUARTERS = [
  * Export contracts to single-sheet Excel with period-based row coloring
  */
 export async function exportContractsToExcel(contracts: Contract[], allPeriods: BillingPeriodConfig[] = []) {
+  const ExcelJS = await loadExcelJS();
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('MANUAL BILLING', { views: [{ state: 'frozen', ySplit: 1 }] });
 
@@ -40,7 +44,11 @@ function createBillingSheet(ws: ExcelJS.Worksheet, contracts: Contract[], allPer
     { header: 'Period', key: 'period', width: 12 },
     { header: 'Invoice Day', key: 'invoiceDay', width: 14 },
     { header: 'Billing Schedule', key: 'billingSchedule', width: 20 },
-    ...QUARTERS.map((q, i) => ({ header: q.label, key: `q${i + 1}`, width: 18 }))
+    ...QUARTERS.map((q, i) => ({ header: q.label, key: `q${i + 1}`, width: 18 })),
+    { header: 'Brand', key: 'brand', width: 16 },
+    { header: 'Model', key: 'model', width: 18 },
+    { header: 'Serial No', key: 'serialNumber', width: 18 },
+    { header: 'Notes', key: 'notes', width: 30 }
   ];
 
   // Apply header styling - dark blue background (#1E3A5F) with gold text (#C9A227)
@@ -76,7 +84,11 @@ function createBillingSheet(ws: ExcelJS.Worksheet, contracts: Contract[], allPer
       machineSite: contract.machineSite,
       period: contract.billingPeriod,
       invoiceDay: contract.invoiceDay,
-      billingSchedule: contract.billingPeriod === 'MB' ? '' : (contract.quarterlyMonths || '')
+      billingSchedule: contract.billingPeriod === 'MB' ? '' : (contract.quarterlyMonths || ''),
+      brand: contract.brand || '',
+      model: contract.model || '',
+      serialNumber: contract.serialNumber || '',
+      notes: contract.notes || ''
     };
 
     QUARTERS.forEach((quarter, i) => {
@@ -115,8 +127,8 @@ function createBillingSheet(ws: ExcelJS.Worksheet, contracts: Contract[], allPer
     }
   });
 
-  // Enable AutoFilter
-  ws.autoFilter = 'A1:K1';
+  // Enable AutoFilter (7 base columns + 4 quarter columns + 4 device columns)
+  ws.autoFilter = 'A1:O1';
 }
 
 // Legacy export for Reports page
@@ -128,6 +140,7 @@ export async function exportContractsReport(contracts: Contract[], allPeriods: B
  * Export top customers to single-sheet Excel
  */
 export async function exportTopCustomersToExcel(topCustomers: { customer: string, count: number }[]) {
+  const ExcelJS = await loadExcelJS();
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Top Customers', { views: [{ state: 'frozen', ySplit: 1 }] });
 

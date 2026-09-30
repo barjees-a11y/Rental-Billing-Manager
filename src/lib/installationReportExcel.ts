@@ -1,7 +1,10 @@
-import ExcelJS from 'exceljs';
+import type ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { Contract } from '@/types/contracts';
 import { MONTH_NAMES } from '@/lib/billingPeriodColors';
+import { loadExcelJS } from '@/lib/excelLazy';
+
+// exceljs is loaded on demand so it stays out of the initial bundle.
 
 /**
  * Export Installation Report (cancelled contracts) to Excel.
@@ -31,6 +34,7 @@ export async function exportInstallationReportToExcel(
         return { count: 0, filename: '' };
     }
 
+    const ExcelJS = await loadExcelJS();
     const wb = new ExcelJS.Workbook();
 
     const monthLabel = selectedMonth !== null ? MONTH_NAMES[selectedMonth - 1] : 'All';

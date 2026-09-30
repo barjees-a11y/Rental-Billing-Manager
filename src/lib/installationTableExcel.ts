@@ -1,7 +1,10 @@
-import ExcelJS from 'exceljs';
+import type ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { Contract, BillingPeriodConfig } from '@/types/contracts';
 import { getQuarterDisplayMonth, QuarterDefinition, MONTH_NAMES } from '@/lib/billingPeriodColors';
+import { loadExcelJS } from '@/lib/excelLazy';
+
+// exceljs is loaded on demand so it stays out of the initial bundle.
 
 const QUARTERS: readonly QuarterDefinition[] = [
     { label: 'JAN-FEB-MAR', months: [1, 2, 3], names: ['JAN', 'FEB', 'MAR'] },
@@ -38,6 +41,7 @@ export async function exportInstallationTableToExcel(
         return { count: 0, filename: '' };
     }
 
+    const ExcelJS = await loadExcelJS();
     const wb = new ExcelJS.Workbook();
     const monthLabel = selectedMonth !== null ? MONTH_NAMES[selectedMonth - 1] : 'All';
     const yearLabel = selectedYear !== null ? selectedYear : '';

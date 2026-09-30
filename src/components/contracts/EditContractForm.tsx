@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Popover,
   PopoverContent,
@@ -28,7 +28,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useContracts } from '@/hooks/useContracts';
 import { useToast } from '@/hooks/use-toast';
-import { Contract, BillingPeriod, InvoiceDay, QuarterlyMonths } from '@/types/contracts';
+import { Contract, BillingPeriod, InvoiceDay, QuarterlyMonths, getContractCategory } from '@/types/contracts';
+import { useDeviceCatalog } from '@/hooks/useDeviceCatalog';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
@@ -146,6 +147,11 @@ export function EditContractForm({ contract, onSuccess, onDelete, onDirtyChange 
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<ChangeRecord[]>([]);
 
+  // Catalog for the contract's category: brands (copier) or device types (other)
+  const contractCategory = getContractCategory(contract);
+  const { brands, modelsForBrand } = useDeviceCatalog(contractCategory);
+  const brandLabel = contractCategory === 'copier' ? 'Brand' : 'Device Type';
+
   const [terminationData, setTerminationData] = useState<{
     date: Date | undefined;
     reason: string;
@@ -158,6 +164,9 @@ export function EditContractForm({ contract, onSuccess, onDelete, onDirtyChange 
     contractNumber: contract.contractNumber,
     customer: contract.customer,
     machineSite: contract.machineSite,
+    brand: contract.brand || '',
+    model: contract.model || '',
+    serialNumber: contract.serialNumber || '',
     billingPeriod: contract.billingPeriod,
     invoiceDay: contract.invoiceDay,
     quarterlyMonths: contract.quarterlyMonths,
@@ -166,6 +175,23 @@ export function EditContractForm({ contract, onSuccess, onDelete, onDirtyChange 
     status: contract.status,
     notes: contract.notes || '',
   });
+
+  // Catalog options, keeping any value that is not (yet) in the catalog selectable
+  const brandOptions = useMemo(() => {
+    const names = brands.map(b => b.name);
+    if (formData.brand && !names.some(n => n.toLowerCase() === formData.brand.toLowerCase())) {
+      return [...names, formData.brand];
+    }
+    return names;
+  }, [brands, formData.brand]);
+
+  const modelOptions = useMemo(() => {
+    const names = modelsForBrand(formData.brand);
+    if (formData.model && !names.some(n => n.toLowerCase() === formData.model.toLowerCase())) {
+      return [...names, formData.model];
+    }
+    return names;
+  }, [modelsForBrand, formData.brand, formData.model]);
 
   // Calculate changes and notify parent
   // Use a ref to track the last emitted changes string to prevent infinite loops
@@ -199,6 +225,9 @@ export function EditContractForm({ contract, onSuccess, onDelete, onDirtyChange 
     checkChange('contractNumber', 'Contract #', contract.contractNumber, formData.contractNumber);
     checkChange('customer', 'Customer', contract.customer, formData.customer);
     checkChange('machineSite', 'Machine/Site', contract.machineSite, formData.machineSite);
+    checkChange('brand', contractCategory === 'copier' ? 'Brand' : 'Device Type', contract.brand, formData.brand);
+    checkChange('model', 'Model', contract.model, formData.model);
+    checkChange('serialNumber', 'Serial No', contract.serialNumber, formData.serialNumber);
     checkChange('billingPeriod', 'Billing Period', contract.billingPeriod, formData.billingPeriod);
     checkChange('invoiceDay', 'Invoice Day', contract.invoiceDay, formData.invoiceDay);
     checkChange('status', 'Status', contract.status, formData.status);
@@ -242,6 +271,9 @@ export function EditContractForm({ contract, onSuccess, onDelete, onDirtyChange 
       contractNumber: contract.contractNumber,
       customer: contract.customer,
       machineSite: contract.machineSite,
+      brand: contract.brand || '',
+      model: contract.model || '',
+      serialNumber: contract.serialNumber || '',
       billingPeriod: contract.billingPeriod,
       invoiceDay: contract.invoiceDay,
       quarterlyMonths: contract.quarterlyMonths,
@@ -262,6 +294,9 @@ export function EditContractForm({ contract, onSuccess, onDelete, onDirtyChange 
         contractNumber: formData.contractNumber,
         customer: formData.customer,
         machineSite: formData.machineSite,
+        brand: formData.brand || undefined,
+        model: formData.model || undefined,
+        serialNumber: formData.serialNumber || undefined,
         billingPeriod: formData.billingPeriod,
         invoiceDay: formData.invoiceDay,
         quarterlyMonths: formData.quarterlyMonths,
@@ -319,6 +354,9 @@ export function EditContractForm({ contract, onSuccess, onDelete, onDirtyChange 
     checkChange('Contract #', contract.contractNumber, formData.contractNumber);
     checkChange('Customer', contract.customer, formData.customer);
     checkChange('Machine/Site', contract.machineSite, formData.machineSite);
+    checkChange(brandLabel, contract.brand, formData.brand);
+    checkChange('Model', contract.model, formData.model);
+    checkChange('Serial No', contract.serialNumber, formData.serialNumber);
     checkChange('Billing Period', contract.billingPeriod, formData.billingPeriod);
     checkChange('Invoice Day', contract.invoiceDay, formData.invoiceDay);
     checkChange('Status', contract.status, formData.status);
@@ -446,6 +484,60 @@ export function EditContractForm({ contract, onSuccess, onDelete, onDirtyChange 
                 <SelectItem value="pulled_out">Cancelled</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+        </div>
+
+        {/* Row 2.5: Brand/Device Type, Model, Serial No */}
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <Label className="text-sm mb-1.5 block">{brandLabel}</Label>
+            <Select
+              value={formData.brand || 'none'}
+              onValueChange={(v) => setFormData(prev => {
+                const nextBrand = v === 'none' ? '' : v;
+                // Clear the model if it no longer belongs to the selected brand
+                const keepModel = prev.model
+                  && modelsForBrand(nextBrand).some(m => m.toLowerCase() === prev.model.toLowerCase());
+                return { ...prev, brand: nextBrand, model: keepModel ? prev.model : '' };
+              })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select..." />
+              </SelectTrigger>
+              <SelectContent className="z-[999]">
+                <SelectItem value="none">None</SelectItem>
+                {brandOptions.map((name) => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-sm mb-1.5 block">Model</Label>
+            <Select
+              value={formData.model || 'none'}
+              onValueChange={(v) => setFormData(prev => ({ ...prev, model: v === 'none' ? '' : v }))}
+              disabled={!formData.brand}
+            >
+              <SelectTrigger className={!formData.brand ? 'opacity-50' : ''}>
+                <SelectValue placeholder={formData.brand ? 'Select model...' : 'Select brand first'} />
+              </SelectTrigger>
+              <SelectContent className="z-[999]">
+                <SelectItem value="none">None</SelectItem>
+                {modelOptions.map((name) => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="serialNumber" className="text-sm mb-1.5 block">Serial No</Label>
+            <Input
+              id="serialNumber"
+              placeholder="Serial number"
+              value={formData.serialNumber}
+              onChange={(e) => setFormData(prev => ({ ...prev, serialNumber: e.target.value }))}
+            />
           </div>
         </div>
 

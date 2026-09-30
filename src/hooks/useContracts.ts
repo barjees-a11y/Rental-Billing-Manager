@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useEffect, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { Contract, ContractStatus, BillingPeriod } from '@/types/contracts';
+import { Contract, ContractStatus, BillingPeriod, getContractCategory } from '@/types/contracts';
 import { updateContractNextInvoiceDate } from '@/lib/invoiceDateLogic';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -47,6 +47,10 @@ export function useContracts() {
       excess_count_clr: 'excessCountClr',
       excess_rate_bw: 'excessRateBW',
       excess_rate_clr: 'excessRateClr',
+      // NOTE: keys that are identical in snake_case and camelCase (brand, model, notes,
+      // status, id, customer) must NOT be listed here — the loop below deletes the
+      // original key, which would remove the value entirely for identity mappings.
+      serial_number: 'serialNumber',
       user_id: 'userId',
       created_at: 'createdAt',
       updated_at: 'updatedAt'
@@ -59,6 +63,11 @@ export function useContracts() {
         delete newItem[key];
       }
     });
+
+    // Legacy rows created before the category migration have no category value.
+    // Treat them as 'copier' so nothing changes for existing data.
+    newItem.category = item.category || 'copier';
+
     return newItem as Contract;
   };
 
@@ -83,6 +92,10 @@ export function useContracts() {
       excessCountClr: 'excess_count_clr',
       excessRateBW: 'excess_rate_bw',
       excessRateClr: 'excess_rate_clr',
+      brand: 'brand',
+      model: 'model',
+      serialNumber: 'serial_number',
+      category: 'category',
       userId: 'user_id',
       createdAt: 'created_at',
       updatedAt: 'updated_at'
@@ -304,24 +317,24 @@ export function useContracts() {
   }, [clearAllMutation]);
 
   // Statistics
-  const stats = useMemo(() => {
-    const active = contracts.filter(c => c.status === 'active').length;
+  const computeStats = useCallback((list: Contract[]) => {
+    const active = list.filter(c => c.status === 'active').length;
 
-    const byPeriod = contracts.reduce((acc, c) => {
+    const byPeriod = list.reduce((acc, c) => {
       if (c.billingPeriod) {
         acc[c.billingPeriod] = (acc[c.billingPeriod] || 0) + 1;
       }
       return acc;
     }, {} as Record<BillingPeriod, number>);
 
-    const byStatus = contracts.reduce((acc, c) => {
+    const byStatus = list.reduce((acc, c) => {
       if (c.status) {
         acc[c.status] = (acc[c.status] || 0) + 1;
       }
       return acc;
     }, {} as Record<ContractStatus, number>);
 
-    const byInvoiceDay = contracts.reduce((acc, c) => {
+    const byInvoiceDay = list.reduce((acc, c) => {
       if (c.invoiceDay) {
         acc[c.invoiceDay] = (acc[c.invoiceDay] || 0) + 1;
       }
@@ -329,13 +342,28 @@ export function useContracts() {
     }, {} as Record<number, number>);
 
     return {
-      total: contracts.filter(c => c.status !== 'pulled_out' && c.status !== 'archived').length,
+      total: list.filter(c => c.status !== 'pulled_out' && c.status !== 'archived').length,
       active,
       byPeriod,
       byStatus,
       byInvoiceDay,
     };
-  }, [contracts]);
+  }, []);
+
+  // Unchanged for backward compatibility (all contracts)
+  const stats = useMemo(() => computeStats(contracts), [contracts, computeStats]);
+
+  // Per-category statistics (used by the Billing tabs + dashboard cards)
+  const copierContracts = useMemo(
+    () => contracts.filter(c => getContractCategory(c) === 'copier'),
+    [contracts]
+  );
+  const otherContracts = useMemo(
+    () => contracts.filter(c => getContractCategory(c) === 'other'),
+    [contracts]
+  );
+  const copierStats = useMemo(() => computeStats(copierContracts), [copierContracts, computeStats]);
+  const otherStats = useMemo(() => computeStats(otherContracts), [otherContracts, computeStats]);
 
   const isLoading = isFetching || addMutation.isPending || updateMutation.isPending || deleteMutation.isPending || importMutation.isPending || clearAllMutation.isPending;
 
@@ -350,5 +378,9 @@ export function useContracts() {
     importContracts,
     clearAllContracts,
     stats,
+    copierContracts,
+    otherContracts,
+    copierStats,
+    otherStats,
   };
 }

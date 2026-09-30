@@ -26,3 +26,22 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Playwright
+test-results/
+playwright-report/
+
+# Local agent/MCP config & machine-specific runtime files
+.kimi-code/
+.mcp.json
+.cursor/mcp.json
+.jetro/
+.agent/
+.agents/
+.gemini/
+.gsd/
+.lovable/
+.flowbaby/
+
+# Build info
+*.tsbuildinfo

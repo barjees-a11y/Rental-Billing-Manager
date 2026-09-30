@@ -11,6 +11,7 @@ import {
   Calendar,
   Users,
   Download,
+  Monitor,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -34,10 +35,10 @@ import {
 const COLORS = ['hsl(217, 91%, 60%)', 'hsl(142, 76%, 42%)', 'hsl(38, 92%, 50%)', 'hsl(0, 62%, 50%)'];
 
 export default function Dashboard() {
-  const { contracts, stats: contractStats } = useContracts();
+  const { contracts, stats: contractStats, copierStats, otherStats } = useContracts();
   const { toast } = useToast();
 
-  const handleDownloadAll = () => {
+  const handleDownloadAll = async () => {
     if (contracts.length === 0) {
       toast({
         title: 'No contracts',
@@ -46,7 +47,7 @@ export default function Dashboard() {
       });
       return;
     }
-    const { count } = exportAllContractsToExcel(contracts);
+    const { count } = await exportAllContractsToExcel(contracts);
     toast({
       title: 'Download Complete',
       description: `Downloaded all ${count} contracts (sorted by joining date).`,
@@ -109,21 +110,39 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card className="glass-panel group hover:scale-[1.02] transition-all duration-300 hover:shadow-[0_0_20px_hsl(var(--primary)/0.2)] overflow-hidden relative animate-slide-up [animation-delay:100ms] opacity-0">
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-primary/50" />
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Active Contracts
+              Copier Rental Contracts
             </CardTitle>
             <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
               <FileText className="h-4 w-4 text-primary shadow-[0_0_10px_hsl(var(--primary)/0.5)]" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold gradient-text">{contractStats.active}</div>
+            <div className="text-2xl font-bold gradient-text">{copierStats.active}</div>
             <p className="text-xs text-muted-foreground">
-              of {contractStats.total} total contracts
+              of {copierStats.total} copier contracts
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="glass-card group hover:scale-[1.02] transition-all duration-300 hover:shadow-[0_0_20px_hsl(var(--accent)/0.2)] overflow-hidden relative animate-slide-up [animation-delay:150ms] opacity-0">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-accent to-accent/50" />
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Other Contracts
+            </CardTitle>
+            <div className="p-2 rounded-lg bg-accent/10 group-hover:bg-accent/20 transition-colors">
+              <Monitor className="h-4 w-4 text-accent shadow-[0_0_10px_hsl(var(--accent)/0.5)]" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold gradient-text">{otherStats.active}</div>
+            <p className="text-xs text-muted-foreground">
+              of {otherStats.total} other device contracts
             </p>
           </CardContent>
         </Card>

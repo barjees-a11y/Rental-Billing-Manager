@@ -32,7 +32,7 @@ interface AppLayoutProps {
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/contracts', label: 'Contracts', icon: FileText },
+  { path: '/contracts', label: 'Billing', icon: FileText },
   { path: '/custom-view', label: 'Custom View', icon: Eye },
   { path: '/import', label: 'Import Excel', icon: Upload },
   { path: '/reports', label: 'Reports', icon: FileSpreadsheet },

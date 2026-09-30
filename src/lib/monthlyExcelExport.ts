@@ -1,8 +1,13 @@
-import ExcelJS from 'exceljs';
+import type ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { Contract, BillingPeriodConfig } from '@/types/contracts';
 import { getQuarterDisplayMonth, QuarterDefinition, MONTH_NAMES } from '@/lib/billingPeriodColors';
-import { isDueInMonth } from '@/lib/invoiceDateLogic';
+import { getContractsDueInMonth } from '@/lib/excelStatic';
+import { loadExcelJS } from '@/lib/excelLazy';
+
+// exceljs is loaded on demand so it stays out of the initial bundle.
+// The pure helpers below are re-exported from the dependency-free excelStatic.ts
+// so existing imports keep working without pulling in the heavy library.
 
 const QUARTERS = [
   { label: 'JAN-FEB-MAR', months: [1, 2, 3], names: ['JAN', 'FEB', 'MAR'] },
@@ -11,15 +16,14 @@ const QUARTERS = [
   { label: 'OCT-NOV-DEC', months: [10, 11, 12], names: ['OCT', 'NOV', 'DEC'] },
 ] as const satisfies readonly QuarterDefinition[];
 
-export function getContractsDueInMonth(contracts: Contract[], month: number, year: number): Contract[] {
-  return contracts.filter((contract) => isDueInMonth(contract, month, year));
-}
+export { getContractsDueInMonth, getAvailableYears } from '@/lib/excelStatic';
 
 export async function exportMonthlyContractsToExcel(
   contracts: Contract[],
   month: number,
   year: number,
-  allPeriods: BillingPeriodConfig[] = []
+  allPeriods: BillingPeriodConfig[] = [],
+  excludedColumns: string[] = []
 ) {
   const dueContracts = getContractsDueInMonth(contracts, month, year);
   const monthName = MONTH_NAMES[month - 1];
@@ -37,10 +41,11 @@ export async function exportMonthlyContractsToExcel(
     return aSchedule.localeCompare(bSchedule);
   });
 
+  const ExcelJS = await loadExcelJS();
   const wb = new ExcelJS.Workbook();
 
   const mainSheet = wb.addWorksheet('MANUAL BILLING', { views: [{ state: 'frozen', ySplit: 1 }] });
-  createMonthlyBillingSheet(mainSheet, sortedContracts, allPeriods);
+  createMonthlyBillingSheet(mainSheet, sortedContracts, allPeriods, excludedColumns);
 
   const invoiceDays = [5, 15, 25];
 
@@ -61,7 +66,7 @@ export async function exportMonthlyContractsToExcel(
 
       const daySheetName = `${day}th`;
       const daySheet = wb.addWorksheet(daySheetName, { views: [{ state: 'frozen', ySplit: 1 }] });
-      createIndividualDaySheet(daySheet, dayContracts, allPeriods);
+      createIndividualDaySheet(daySheet, dayContracts, allPeriods, excludedColumns);
     }
   }
 
@@ -72,7 +77,8 @@ export async function exportMonthlyContractsToExcel(
   return { count: sortedContracts.length, filename };
 }
 
-export function createMonthlyBillingSheet(ws: ExcelJS.Worksheet, contracts: Contract[], allPeriods: BillingPeriodConfig[]): void {
+export function createMonthlyBillingSheet(ws: ExcelJS.Worksheet, contracts: Contract[], allPeriods: BillingPeriodConfig[], excludedColumns: string[] = []): void {
+  const excluded = new Set(excludedColumns);
   ws.columns = [
     { header: 'SI No', key: 'siNo', width: 8 },
     { header: 'Contract#', key: 'contractNumber', width: 14 },
@@ -81,8 +87,12 @@ export function createMonthlyBillingSheet(ws: ExcelJS.Worksheet, contracts: Cont
     { header: 'Period', key: 'period', width: 12 },
     { header: 'Invoice Day', key: 'invoiceDay', width: 14 },
     { header: 'Billing Schedule', key: 'billingSchedule', width: 20 },
-    ...QUARTERS.map((q, i) => ({ header: q.label, key: `q${i + 1}`, width: 18 }))
-  ];
+    ...QUARTERS.map((q, i) => ({ header: q.label, key: `q${i + 1}`, width: 18 })),
+    { header: 'Brand', key: 'brand', width: 16 },
+    { header: 'Model', key: 'model', width: 18 },
+    { header: 'Serial No', key: 'serialNumber', width: 18 },
+    { header: 'Notes', key: 'notes', width: 30 }
+  ].filter(col => !excluded.has(col.header));
 
   const totalCols = ws.columns.length;
   applyHeaderStyling(ws.getRow(1), totalCols);
@@ -107,7 +117,11 @@ export function createMonthlyBillingSheet(ws: ExcelJS.Worksheet, contracts: Cont
         machineSite: contract.machineSite,
         period: contract.billingPeriod,
         invoiceDay: contract.invoiceDay,
-        billingSchedule: contract.billingPeriod === 'MB' ? '' : (contract.quarterlyMonths || '')
+        billingSchedule: contract.billingPeriod === 'MB' ? '' : (contract.quarterlyMonths || ''),
+        brand: contract.brand || '',
+        model: contract.model || '',
+        serialNumber: contract.serialNumber || '',
+        notes: contract.notes || ''
       };
       QUARTERS.forEach((q, i) => {
         rowData[`q${i + 1}`] = getQuarterDisplayMonth(contract.billingPeriod, contract.quarterlyMonths, q);
@@ -118,10 +132,22 @@ export function createMonthlyBillingSheet(ws: ExcelJS.Worksheet, contracts: Cont
     }
   }
 
-  ws.autoFilter = 'A1:K1';
+  // AutoFilter spans exactly the columns that remain after exclusions
+  ws.autoFilter = `A1:${columnLetter(totalCols)}1`;
 }
 
-export function createIndividualDaySheet(ws: ExcelJS.Worksheet, contracts: Contract[], allPeriods: BillingPeriodConfig[]): void {
+function columnLetter(n: number): string {
+  let letter = '';
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    letter = String.fromCharCode(65 + rem) + letter;
+    n = Math.floor((n - 1) / 26);
+  }
+  return letter;
+}
+
+export function createIndividualDaySheet(ws: ExcelJS.Worksheet, contracts: Contract[], allPeriods: BillingPeriodConfig[], excludedColumns: string[] = []): void {
+  const excluded = new Set(excludedColumns);
   ws.columns = [
     { header: 'SI No', key: 'siNo', width: 8 },
     { header: 'Contract#', key: 'contractNumber', width: 14 },
@@ -129,8 +155,12 @@ export function createIndividualDaySheet(ws: ExcelJS.Worksheet, contracts: Contr
     { header: 'Machine/Site', key: 'machineSite', width: 37 },
     { header: 'Period', key: 'period', width: 12 },
     { header: 'Invoice Day', key: 'invoiceDay', width: 14 },
-    ...QUARTERS.map((q, i) => ({ header: q.label, key: `q${i + 1}`, width: 18 }))
-  ];
+    ...QUARTERS.map((q, i) => ({ header: q.label, key: `q${i + 1}`, width: 18 })),
+    { header: 'Brand', key: 'brand', width: 16 },
+    { header: 'Model', key: 'model', width: 18 },
+    { header: 'Serial No', key: 'serialNumber', width: 18 },
+    { header: 'Notes', key: 'notes', width: 30 }
+  ].filter(col => !excluded.has(col.header));
 
   const totalCols = ws.columns.length;
   applyHeaderStyling(ws.getRow(1), totalCols);
@@ -143,7 +173,11 @@ export function createIndividualDaySheet(ws: ExcelJS.Worksheet, contracts: Contr
       customer: contract.customer,
       machineSite: contract.machineSite,
       period: contract.billingPeriod,
-      invoiceDay: contract.invoiceDay
+      invoiceDay: contract.invoiceDay,
+      brand: contract.brand || '',
+      model: contract.model || '',
+      serialNumber: contract.serialNumber || '',
+      notes: contract.notes || ''
     };
     QUARTERS.forEach((q, i) => {
       rowData[`q${i + 1}`] = getQuarterDisplayMonth(contract.billingPeriod, contract.quarterlyMonths, q);
@@ -152,7 +186,8 @@ export function createIndividualDaySheet(ws: ExcelJS.Worksheet, contracts: Contr
     applyDataRowStyling(row, totalCols, contract, allPeriods);
   }
 
-  ws.autoFilter = 'A1:J1';
+  // AutoFilter spans exactly the columns that remain after exclusions
+  ws.autoFilter = `A1:${columnLetter(totalCols)}1`;
 }
 
 function applyHeaderStyling(row: ExcelJS.Row, totalCols: number): void {
@@ -217,11 +252,3 @@ function applyDataRowStyling(row: ExcelJS.Row, totalCols: number, contract: Cont
   }
 }
 
-export function getAvailableYears(): number[] {
-  const currentYear = new Date().getFullYear();
-  const years: number[] = [];
-  for (let y = currentYear - 5; y <= currentYear + 5; y++) {
-    years.push(y);
-  }
-  return years;
-}

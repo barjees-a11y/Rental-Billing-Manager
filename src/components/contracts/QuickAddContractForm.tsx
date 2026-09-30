@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -29,18 +30,29 @@ import { Calendar } from "@/components/ui/calendar";
 
 import { useContracts } from '@/hooks/useContracts';
 import { useToast } from '@/hooks/use-toast';
-import { BillingPeriod, InvoiceDay, QuarterlyMonths, BILLING_PERIOD_LABELS } from '@/types/contracts';
+import { BillingPeriod, InvoiceDay, QuarterlyMonths, ContractCategory, BILLING_PERIOD_LABELS } from '@/types/contracts';
+import { useDeviceCatalog } from '@/hooks/useDeviceCatalog';
 import { format, parse, isValid } from 'date-fns';
 
-export function QuickAddContractForm({ onSuccess }: { onSuccess?: () => void }) {
+interface QuickAddContractFormProps {
+  onSuccess?: () => void;
+  /** Which contract group the new contract belongs to (defaults to copier) */
+  category?: ContractCategory;
+}
+
+export function QuickAddContractForm({ onSuccess, category = 'copier' }: QuickAddContractFormProps) {
   const [formData, setFormData] = useState({
     contractNumber: '',
     customer: '',
     machineSite: '',
+    brand: '',
+    model: '',
+    serialNumber: '',
     billingPeriod: 'MB' as BillingPeriod,
     invoiceDay: 15 as InvoiceDay,
     quarterlyMonths: undefined as QuarterlyMonths | undefined,
     startDate: format(new Date(), 'yyyy-MM-dd'),
+    notes: '',
   });
 
   const [useExistingCustomer, setUseExistingCustomer] = useState(false);
@@ -50,6 +62,11 @@ export function QuickAddContractForm({ onSuccess }: { onSuccess?: () => void }) 
 
   const { contracts, addContract } = useContracts();
   const { toast } = useToast();
+
+  // 'copier' -> brands (Canon, Ricoh...) | 'other' -> device types (Shredder, Paper Cut...)
+  const { brands, modelsForBrand } = useDeviceCatalog(category);
+  const brandLabel = category === 'copier' ? 'Brand' : 'Device Type';
+  const modelOptions = useMemo(() => modelsForBrand(formData.brand), [modelsForBrand, formData.brand]);
 
   const existingCustomers = useMemo(() => {
     const activeContracts = contracts.filter(c => c.status !== 'pulled_out' && c.status !== 'archived');
@@ -80,11 +97,16 @@ export function QuickAddContractForm({ onSuccess }: { onSuccess?: () => void }) 
       contractNumber: formData.contractNumber,
       customer: formData.customer,
       machineSite: formData.machineSite,
+      category,
+      brand: formData.brand || undefined,
+      model: formData.model || undefined,
+      serialNumber: formData.serialNumber || undefined,
       billingPeriod: formData.billingPeriod,
       invoiceDay: formData.invoiceDay,
       quarterlyMonths: formData.quarterlyMonths,
       startDate: formData.startDate,
       status: 'active',
+      notes: formData.notes || undefined,
     });
 
     toast({
@@ -97,10 +119,14 @@ export function QuickAddContractForm({ onSuccess }: { onSuccess?: () => void }) 
       contractNumber: '',
       customer: '',
       machineSite: '',
+      brand: '',
+      model: '',
+      serialNumber: '',
       billingPeriod: 'MB',
       invoiceDay: 15,
       quarterlyMonths: undefined,
       startDate: format(new Date(), 'yyyy-MM-dd'),
+      notes: '',
     });
     setOpenDatePicker(false);
     onSuccess?.();
@@ -422,6 +448,72 @@ export function QuickAddContractForm({ onSuccess }: { onSuccess?: () => void }) 
             </PopoverContent>
           </Popover>
         </div>
+      </div>
+
+      {/* Row 3: Brand/Device Type, Model, Serial No */}
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <Label className="text-xs mb-1 block">{brandLabel}</Label>
+          <Select
+            value={formData.brand || 'none'}
+            onValueChange={(v) => setFormData(prev => {
+              const nextBrand = v === 'none' ? '' : v;
+              // Clear the model if it no longer belongs to the selected brand
+              const keepModel = prev.model
+                && modelsForBrand(nextBrand).some(m => m.toLowerCase() === prev.model.toLowerCase());
+              return { ...prev, brand: nextBrand, model: keepModel ? prev.model : '' };
+            })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select..." />
+            </SelectTrigger>
+            <SelectContent className="z-[999]" style={{ zIndex: 10000 }}>
+              <SelectItem value="none">None</SelectItem>
+              {brands.map((brand) => (
+                <SelectItem key={brand.id} value={brand.name}>{brand.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs mb-1 block">Model</Label>
+          <Select
+            value={formData.model || 'none'}
+            onValueChange={(v) => setFormData(prev => ({ ...prev, model: v === 'none' ? '' : v }))}
+            disabled={!formData.brand}
+          >
+            <SelectTrigger className={!formData.brand ? 'opacity-50' : ''}>
+              <SelectValue placeholder={formData.brand ? 'Select model...' : 'Select brand first'} />
+            </SelectTrigger>
+            <SelectContent className="z-[999]" style={{ zIndex: 10000 }}>
+              <SelectItem value="none">None</SelectItem>
+              {modelOptions.map((model) => (
+                <SelectItem key={model} value={model}>{model}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="serialNumber" className="text-xs mb-1 block">Serial No</Label>
+          <Input
+            id="serialNumber"
+            placeholder="Serial number"
+            value={formData.serialNumber}
+            onChange={(e) => setFormData(prev => ({ ...prev, serialNumber: e.target.value }))}
+          />
+        </div>
+      </div>
+
+      {/* Notes */}
+      <div>
+        <Label htmlFor="notes" className="text-xs mb-1 block">Notes (Optional)</Label>
+        <Textarea
+          id="notes"
+          placeholder="Any additional notes..."
+          value={formData.notes}
+          onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+          rows={2}
+        />
       </div>
 
       <Button type="submit" className="w-full">
