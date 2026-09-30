@@ -1,6 +1,6 @@
 # Handoff — Rental Billing Manager: Device Categories Feature
 
-## Status: Phase 1 + Phase 2 code complete & verified; pending DB migration + push
+## Status: migration + super-admin promotion applied to live DB; committed locally (bc91fd6); push BLOCKED (403 — stored credential `deepakt369b-droid` has no write access to `barjees-a11y/Rental-Billing-Manager`; no gh CLI installed)
 
 ### Done (all verified: `bun run build` 0 errors, `bun run test` 8/8)
 
