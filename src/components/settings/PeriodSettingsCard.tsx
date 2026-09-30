@@ -103,17 +103,15 @@ function SortableTableRow({ period, getBillingLogicLabel, onEdit, onDelete }: So
           >
             <Pencil className="h-4 w-4" />
           </Button>
-          {!period.isBuiltIn && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onDelete(period)}
-              className="text-destructive hover:text-destructive"
-              title="Delete Period"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onDelete(period)}
+            className="text-destructive hover:text-destructive"
+            title="Delete Period"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       </TableCell>
     </TableRow>
@@ -256,6 +254,9 @@ export function PeriodSettingsCard() {
             <AlertDialogDescription>
               Are you sure you want to delete the "{deleteConfirmPeriod?.label}" period?
               This action cannot be undone.
+              {deleteConfirmPeriod?.isBuiltIn && (
+                <> Contracts assigned this billing period may not render correctly until they are moved to another period.</>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

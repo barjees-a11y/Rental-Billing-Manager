@@ -141,6 +141,7 @@ export interface BillingPeriodConfig {
     biMonthly: boolean;    // Odd months
   };
   isBuiltIn: boolean;      // true for built-in, false for custom
+  isHidden?: boolean;      // tombstone: user deleted this built-in period
 }
 
 // Default built-in billing periods

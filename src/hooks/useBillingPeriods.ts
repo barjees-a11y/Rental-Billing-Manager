@@ -65,7 +65,7 @@ export function useBillingPeriods() {
       return [...DEFAULT_BILLING_PERIODS];
     }
 
-    const savedPeriods = [...customPeriods];
+    const savedPeriods = [...customPeriods].filter((p) => !p.isHidden);
 
     // Append any newly released built-in periods that aren't in the DB yet
     const missingDefaults = DEFAULT_BILLING_PERIODS.filter(
@@ -109,7 +109,11 @@ export function useBillingPeriods() {
 
   const addPeriod = useCallback((period: Omit<BillingPeriodConfig, 'isBuiltIn'>) => {
     const newPeriod: BillingPeriodConfig = { ...period, isBuiltIn: false };
-    mutation.mutate([...customPeriods, newPeriod]);
+    // Drop any hidden tombstone with the same code (user is resurrecting the period)
+    const withoutTombstone = customPeriods.filter(
+      (p) => !(p.code === newPeriod.code && p.isHidden)
+    );
+    mutation.mutate([...withoutTombstone, newPeriod]);
   }, [customPeriods, mutation]);
 
   const updatePeriod = useCallback((code: string, updates: Partial<BillingPeriodConfig>) => {
@@ -129,8 +133,15 @@ export function useBillingPeriods() {
   }, [customPeriods, mutation]);
 
   const deletePeriod = useCallback((code: string) => {
-    const updatedPeriods = customPeriods.filter((p) => p.code !== code);
-    mutation.mutate(updatedPeriods);
+    if (customPeriods.some((p) => p.code === code)) {
+      mutation.mutate(customPeriods.filter((p) => p.code !== code));
+      return;
+    }
+    // Built-in period: persist a tombstone so allPeriods stops re-adding it
+    const builtIn = DEFAULT_BILLING_PERIODS.find((p) => p.code === code);
+    if (builtIn) {
+      mutation.mutate([...customPeriods, { ...builtIn, isBuiltIn: false, isHidden: true }]);
+    }
   }, [customPeriods, mutation]);
 
   const getPeriod = useCallback((code: string): BillingPeriodConfig | undefined => {
